@@ -41,6 +41,7 @@ async def get_current_user(
 
     user.last_activity_at = datetime.now(UTC)
     await session.commit()
+    await session.refresh(user)
     return user
 
 

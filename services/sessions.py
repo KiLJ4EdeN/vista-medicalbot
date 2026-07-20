@@ -28,6 +28,7 @@ async def create_chat_session(db: AsyncSession, user: User, *, title: str | None
     chat_session = ChatSession(user_id=user.id, title=title)
     db.add(chat_session)
     await db.commit()
+    await db.refresh(chat_session)
     return chat_session
 
 
@@ -54,6 +55,7 @@ async def update_chat_session(
     chat_session = await get_owned_session(db, user_id, session_id, for_update=True)
     chat_session.title = title
     await db.commit()
+    await db.refresh(chat_session)
     return chat_session
 
 

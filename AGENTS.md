@@ -61,3 +61,8 @@ Provider calls cannot be considered validated without actual credentials.
 - No Alembic migrations yet; startup uses `create_all`.
 - Tests are deferred by current product decision.
 - Runtime configuration and secrets remain environment-only.
+
+## Comments
+
+- Code is self-documenting. No uppercase comments, section dividers, or
+  decorative separators (`# FIXME`, `# TODO`, `# ── Section ──`, etc.).

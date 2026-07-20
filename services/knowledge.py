@@ -73,6 +73,7 @@ async def create_knowledge_entry(
         with suppress(ExternalServiceError):
             await remove_object(object_key)
         raise
+    await db.refresh(entry)
     return entry
 
 
@@ -121,6 +122,7 @@ async def update_knowledge_entry(
     entry.status = ProcessingStatus.PENDING
     entry.processing_error = None
     await db.commit()
+    await db.refresh(entry)
     return entry
 
 
@@ -129,6 +131,7 @@ async def mark_knowledge_pending(db: AsyncSession, entry_id: UUID) -> KnowledgeE
     entry.status = ProcessingStatus.PENDING
     entry.processing_error = None
     await db.commit()
+    await db.refresh(entry)
     return entry
 
 
@@ -136,6 +139,7 @@ async def mark_knowledge_deleted(db: AsyncSession, entry_id: UUID) -> KnowledgeE
     entry = await get_knowledge_entry(db, entry_id)
     entry.deleted_at = datetime.now(UTC)
     await db.commit()
+    await db.refresh(entry)
     return entry
 
 

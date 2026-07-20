@@ -96,6 +96,8 @@ async def _prepare_messages(
     chat_session.updated_at = datetime.now(UTC)
     db.add_all([user_message, assistant_message])
     await db.commit()
+    await db.refresh(user_message)
+    await db.refresh(assistant_message)
     return user_message, assistant_message
 
 

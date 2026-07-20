@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,9 +12,16 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/postgres"
+    postgres_host: str = "localhost"
+    postgres_port: int = 5432
+    postgres_user: str = "postgres"
+    postgres_pw: SecretStr = SecretStr("postgres")
+    postgres_db: str = "postgres"
+    database_url: str = ""
 
-    minio_endpoint: str = "localhost:9000"
+    minio_host: str = "localhost"
+    minio_port: int = 9000
+    minio_endpoint: str = ""
     minio_public_endpoint: str | None = None
     minio_public_secure: bool | None = None
     minio_access_key: str = "minioadmin"
@@ -26,7 +33,9 @@ class Settings(BaseSettings):
     max_pdf_pages: int = Field(default=100, gt=0)
     download_url_expire_minutes: int = Field(default=15, gt=0, le=1440)
 
-    qdrant_url: str = "http://localhost:6333"
+    qdrant_host: str = "localhost"
+    qdrant_port: int = 6333
+    qdrant_url: str = ""
     qdrant_collection: str = "medical_knowledge"
     knowledge_chunk_size: int = Field(default=1200, gt=100)
     knowledge_chunk_overlap: int = Field(default=200, ge=0)
@@ -56,6 +65,20 @@ class Settings(BaseSettings):
     embedding_api_url: str = "https://openrouter.ai/api/v1/embeddings"
     embedding_model: str = "baai/bge-m3"
     embedding_api_key: SecretStr = SecretStr("")
+
+    @model_validator(mode="after")
+    def assemble_urls(self) -> "Settings":
+        if not self.database_url:
+            pw = self.postgres_pw.get_secret_value()
+            self.database_url = (
+                f"postgresql+asyncpg://{self.postgres_user}:{pw}"
+                f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+            )
+        if not self.minio_endpoint:
+            self.minio_endpoint = f"{self.minio_host}:{self.minio_port}"
+        if not self.qdrant_url:
+            self.qdrant_url = f"http://{self.qdrant_host}:{self.qdrant_port}"
+        return self
 
 
 @lru_cache

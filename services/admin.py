@@ -68,6 +68,7 @@ async def set_user_active(db: AsyncSession, user_id: UUID, *, is_active: bool) -
     user = await get_user(db, user_id, for_update=True)
     if user.is_active == is_active:
         await db.rollback()
+        await db.refresh(user)
         return user
 
     user.is_active = is_active
@@ -79,6 +80,7 @@ async def set_user_active(db: AsyncSession, user_id: UUID, *, is_active: bool) -
             .values(revoked_at=now, revoke_reason="user_deactivated")
         )
     await db.commit()
+    await db.refresh(user)
     return user
 
 

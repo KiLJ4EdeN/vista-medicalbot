@@ -29,9 +29,10 @@ speech-to-text.
 2. Set at least these secrets in `.env`:
 
    ```dotenv
-   POSTGRES_PASSWORD=change-me
-   MINIO_ROOT_USER=minioadmin
-   MINIO_ROOT_PASSWORD=change-me
+   POSTGRES_PASSWORD=change-me        # docker-compose postgres root
+   POSTGRES_PW=change-me              # local-dev postgres password
+   MINIO_ROOT_PASSWORD=change-me      # docker-compose minio admin
+   MINIO_SECRET_KEY=change-me         # local-dev minio secret
    JWT_SECRET=use-a-long-random-secret
    ADMIN_API_KEY=use-a-long-random-admin-key
    LLM_API_KEY=
@@ -57,19 +58,37 @@ by Docker Compose.
 
 ## Local Development
 
-Python 3.12 or newer and `uv` are required.
+Python 3.12 or newer and `uv` are required. Run infra services first:
+
+```bash
+docker compose up -d postgres minio qdrant
+```
+
+Then start the app locally:
 
 ```bash
 uv sync
 uv run uvicorn main:app --reload
 ```
 
-For local services, set `DATABASE_URL`, `MINIO_ENDPOINT`, and `QDRANT_URL` to
-reachable host addresses. `MINIO_PUBLIC_ENDPOINT` is the browser-reachable host
-used when signing download URLs; set it and `MINIO_PUBLIC_SECURE` to the
-deployed MinIO domain and HTTPS behavior outside local Docker. Tables are
-created from ORM metadata during startup; Alembic migrations are intentionally
-deferred for this initial version.
+Environment variables read from `.env`. Service URLs auto-construct from
+component vars — to switch between Docker and local dev just change three
+values:
+
+| Var | Docker | Local |
+|-----|--------|-------|
+| `POSTGRES_HOST` | `postgres` | `localhost` |
+| `MINIO_HOST` | `minio` | `localhost` |
+| `QDRANT_HOST` | `qdrant` | `localhost` |
+
+Set `DATABASE_URL` / `MINIO_ENDPOINT` / `QDRANT_URL` directly to bypass
+auto-construction entirely.
+
+`MINIO_PUBLIC_ENDPOINT` is the browser-reachable host used when signing
+download URLs; set it and `MINIO_PUBLIC_SECURE` to the deployed MinIO domain
+and HTTPS behavior outside local Docker. Tables are created from ORM metadata
+during startup; Alembic migrations are intentionally deferred for this initial
+version.
 
 Static validation commands:
 

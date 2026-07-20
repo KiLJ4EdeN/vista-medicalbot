@@ -47,6 +47,7 @@ async def create_upload(
         with suppress(ExternalServiceError):
             await remove_object(object_key)
         raise
+    await db.refresh(upload)
     return upload
 
 

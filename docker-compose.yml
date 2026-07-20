@@ -27,10 +27,12 @@ services:
       - model-cache:/root/.cache
 
   postgres:
-    image: postgres:16-bookworm
+    image: docker.arvancloud.ir/postgres:16-bookworm
     restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -40,7 +42,7 @@ services:
       retries: 20
 
   minio:
-    image: minio/minio:latest
+    image: docker.arvancloud.ir/minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -53,8 +55,10 @@ services:
       - minio-data:/data
 
   qdrant:
-    image: qdrant/qdrant:latest
+    image: docker.arvancloud.ir/qdrant/qdrant:latest
     restart: unless-stopped
+    ports:
+      - "6333:6333"
     volumes:
       - qdrant-data:/qdrant/storage
 

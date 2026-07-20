@@ -74,6 +74,7 @@ async def register_user(
     except IntegrityError as error:
         await session.rollback()
         raise ConflictError("An account with this email already exists") from error
+    await session.refresh(user)
     return user, tokens
 
 
@@ -91,6 +92,7 @@ async def login_user(
     tokens, refresh_record = _new_token_pair(user.id)
     session.add(refresh_record)
     await session.commit()
+    await session.refresh(user)
     return user, tokens
 
 
@@ -181,6 +183,7 @@ async def update_profile(
     except IntegrityError as error:
         await session.rollback()
         raise ConflictError("An account with this email already exists") from error
+    await session.refresh(user)
     return user
 
 
