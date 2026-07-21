@@ -4,9 +4,9 @@ from pathlib import Path
 
 import frontmatter
 
-ROOT = Path(__file__).resolve().parent.parent
-PROMPTS_DIR = ROOT / "prompts"
-SKILLS_DIR = ROOT / "skills"
+ROOT = Path(__file__).resolve().parent.parent.parent
+PROMPTS_DIR = ROOT / "src" / "prompts"
+SKILLS_DIR = ROOT / "src" / "skills"
 
 
 @dataclass(frozen=True, slots=True)

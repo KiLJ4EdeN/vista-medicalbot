@@ -31,9 +31,11 @@ dependencies = [
     "uvicorn[standard]>=0.34.0",
 ]
 
+[tool.setuptools.package-dir]
+"" = "src"
+
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["api*", "core*", "db*", "models*", "schemas*", "services*"]
+where = ["src"]
 
 [tool.pytest.ini_options]
 markers = [
@@ -50,3 +52,10 @@ exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-timeout>=2.4.0",
+]
