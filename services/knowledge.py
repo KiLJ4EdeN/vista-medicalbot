@@ -16,7 +16,6 @@ from db.session import async_session_factory
 from models import KnowledgeEntry
 from models.enums import ProcessingStatus, UploadKind
 from services.documents import ValidatedDocument, validate_document_upload
-from services.multimodal import extract_text_with_vlm
 from services.storage import (
     get_object_bytes,
     presigned_download_url,
@@ -24,6 +23,7 @@ from services.storage import (
     remove_object,
 )
 from services.vector import KnowledgeChunk, delete_knowledge_vectors, index_chunks
+from services.vlm import extract_text_with_vlm
 
 
 def normalize_tags(tags: list[str]) -> list[str]:

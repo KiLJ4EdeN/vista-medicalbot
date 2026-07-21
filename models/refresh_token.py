@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
 from typing import TYPE_CHECKING
-from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, String, Uuid
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Column, DateTime, ForeignKey, String, Uuid
+from sqlalchemy.orm import Mapped, relationship
 
 from db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
@@ -16,15 +14,13 @@ if TYPE_CHECKING:
 class RefreshToken(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "refresh_tokens"
 
-    user_id: Mapped[UUID] = mapped_column(
-        Uuid, ForeignKey("users.id", ondelete="CASCADE"), index=True
-    )
-    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
-    family_id: Mapped[UUID] = mapped_column(Uuid, index=True)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
-    revoke_reason: Mapped[str | None] = mapped_column(String(100), default=None)
-    replaced_by_id: Mapped[UUID | None] = mapped_column(
+    user_id = Column(Uuid, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token_hash = Column(String(64), unique=True)
+    family_id = Column(Uuid, index=True)
+    expires_at = Column(DateTime(timezone=True), index=True)
+    revoked_at = Column(DateTime(timezone=True), default=None)
+    revoke_reason = Column(String(100), default=None)
+    replaced_by_id = Column(
         Uuid, ForeignKey("refresh_tokens.id", ondelete="SET NULL"), default=None
     )
 

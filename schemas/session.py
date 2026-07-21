@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class SessionCreateRequest(BaseModel):
+class CreateSessionRequest(BaseModel):
     title: str | None = Field(default=None, max_length=200)
 
     @field_validator("title", mode="after")
@@ -16,7 +16,7 @@ class SessionCreateRequest(BaseModel):
         return normalized or None
 
 
-class SessionUpdateRequest(BaseModel):
+class RenameSessionRequest(BaseModel):
     title: str = Field(min_length=1, max_length=200)
 
     @field_validator("title", mode="after")
@@ -28,7 +28,7 @@ class SessionUpdateRequest(BaseModel):
         return normalized
 
 
-class SessionResponse(BaseModel):
+class SessionInfo(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -37,8 +37,8 @@ class SessionResponse(BaseModel):
     updated_at: datetime
 
 
-class SessionListResponse(BaseModel):
-    items: list[SessionResponse]
+class SessionList(BaseModel):
+    items: list[SessionInfo]
     total: int
     offset: int
     limit: int

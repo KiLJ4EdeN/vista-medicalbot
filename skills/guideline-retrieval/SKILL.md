@@ -1,5 +1,5 @@
 ---
-name: guideline_retrieval
+name: guideline-retrieval
 description: Search administrator-provided medical guidelines and cite retrieved evidence.
 ---
 

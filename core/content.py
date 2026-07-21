@@ -27,7 +27,7 @@ def load_prompt(name: str) -> str:
 @lru_cache
 def load_skills() -> dict[str, Skill]:
     skills: dict[str, Skill] = {}
-    for path in sorted(SKILLS_DIR.glob("*.md")):
+    for path in sorted(SKILLS_DIR.glob("*/SKILL.md")):
         document = frontmatter.loads(path.read_text(encoding="utf-8"))
         name = str(document.metadata.get("name", path.stem)).strip()
         description = str(document.metadata.get("description", "")).strip()

@@ -13,10 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
 from core.exceptions import ConflictError
-from models import Message, User
+from models import ChatMessage, Upload, User
 from models.enums import MessageRole, MessageStatus
 from services.agent import create_session_agent, load_chat_history
-from services.sessions import get_owned_session
+from services.sessions import get_session
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,32 +59,53 @@ def _content_text(content: Any) -> str:
 
 
 async def _prepare_messages(
-    db: AsyncSession, user: User, session_id: UUID, content: str
-) -> tuple[Message, Message]:
-    chat_session = await get_owned_session(db, user.id, session_id, for_update=True)
+    db: AsyncSession,
+    user: User,
+    session_id: UUID,
+    content: str,
+    upload_ids: list[UUID] | None = None,
+) -> tuple[ChatMessage, ChatMessage]:
+    chat_session = await get_session(db, user.id, session_id, for_update=True)
     active_generation = await db.scalar(
-        select(Message.id).where(
-            Message.session_id == session_id,
-            Message.role == MessageRole.ASSISTANT,
-            Message.status == MessageStatus.PENDING,
+        select(ChatMessage.id).where(
+            ChatMessage.session_id == session_id,
+            ChatMessage.role == MessageRole.ASSISTANT,
+            ChatMessage.status == MessageStatus.PENDING,
         )
     )
     if active_generation is not None:
         raise ConflictError("A response is already being generated for this session")
 
     latest_sequence = await db.scalar(
-        select(func.max(Message.sequence_number)).where(Message.session_id == session_id)
+        select(func.max(ChatMessage.sequence_number)).where(ChatMessage.session_id == session_id)
     )
     next_sequence = (latest_sequence or 0) + 1
 
-    user_message = Message(
+    extra: dict[str, Any] = {}
+    if upload_ids:
+        validated: list[str] = []
+        for uid in upload_ids:
+            upload = await db.scalar(
+                select(Upload).where(
+                    Upload.id == uid,
+                    Upload.session_id == session_id,
+                    Upload.deleted_at.is_(None),
+                )
+            )
+            if upload is not None:
+                validated.append(str(upload.id))
+        if validated:
+            extra["attachments"] = validated
+
+    user_message = ChatMessage(
         session_id=session_id,
         role=MessageRole.USER,
         status=MessageStatus.COMPLETED,
         sequence_number=next_sequence,
         content=content,
+        payload=extra,
     )
-    assistant_message = Message(
+    assistant_message = ChatMessage(
         session_id=session_id,
         role=MessageRole.ASSISTANT,
         status=MessageStatus.PENDING,
@@ -110,10 +131,16 @@ def _final_content(result: dict[str, Any]) -> str:
     return ""
 
 
-async def stream_agent_chat(
-    db: AsyncSession, user: User, session_id: UUID, content: str
+async def stream_query(
+    db: AsyncSession,
+    user: User,
+    session_id: UUID,
+    content: str,
+    upload_ids: list[UUID] | None = None,
 ) -> AsyncIterator[AgentStreamEvent]:
-    _, assistant_message = await _prepare_messages(db, user, session_id, content)
+    _, assistant_message = await _prepare_messages(
+        db, user, session_id, content, upload_ids=upload_ids
+    )
     queue: asyncio.Queue[AgentStreamEvent] = asyncio.Queue()
     callback = AgentEventHandler(queue)
     tools_used: list[str] = []
@@ -161,7 +188,7 @@ async def stream_agent_chat(
                         yield AgentStreamEvent("token", {"content": remainder})
                 assistant_message.content = final_content
                 assistant_message.status = MessageStatus.COMPLETED
-                assistant_message.extra_data = {"tools_used": tools_used}
+                assistant_message.payload = {"tools_used": tools_used}
                 await db.commit()
                 yield AgentStreamEvent(
                     "message_completed", {"message_id": str(assistant_message.id)}
@@ -176,14 +203,14 @@ async def stream_agent_chat(
                 await task
         assistant_message.content = streamed_content
         assistant_message.status = MessageStatus.FAILED
-        assistant_message.extra_data = {"tools_used": tools_used, "error": "client_disconnected"}
+        assistant_message.payload = {"tools_used": tools_used, "error": "client_disconnected"}
         with suppress(Exception):
             await db.commit()
         raise
     except Exception:
         assistant_message.content = streamed_content
         assistant_message.status = MessageStatus.FAILED
-        assistant_message.extra_data = {"tools_used": tools_used, "error": "generation_failed"}
+        assistant_message.payload = {"tools_used": tools_used, "error": "generation_failed"}
         await db.commit()
         yield AgentStreamEvent(
             "error",

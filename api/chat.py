@@ -6,8 +6,8 @@ from fastapi import APIRouter
 from sse_starlette import EventSourceResponse
 
 from api.dependencies import CurrentUser, DatabaseSession
-from schemas.chat import ChatRequest
-from services.chat import stream_agent_chat
+from schemas.chat import QueryRequest
+from services.chat import stream_query
 
 router = APIRouter(prefix="/sessions", tags=["chat"])
 
@@ -18,9 +18,9 @@ router = APIRouter(prefix="/sessions", tags=["chat"])
     responses={200: {"content": {"text/event-stream": {}}}},
 )
 async def chat(
-    session_id: UUID, payload: ChatRequest, user: CurrentUser, db: DatabaseSession
+    session_id: UUID, payload: QueryRequest, user: CurrentUser, db: DatabaseSession
 ) -> EventSourceResponse:
-    stream = stream_agent_chat(db, user, session_id, payload.content)
+    stream = stream_query(db, user, session_id, payload.content, upload_ids=payload.upload_ids)
     first_event = await anext(stream)
 
     async def events() -> AsyncIterator[dict[str, str]]:

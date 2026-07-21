@@ -1,8 +1,11 @@
+from uuid import UUID
+
 from pydantic import BaseModel, Field, field_validator
 
 
-class ChatRequest(BaseModel):
+class QueryRequest(BaseModel):
     content: str = Field(min_length=1, max_length=20_000)
+    upload_ids: list[UUID] | None = Field(default=None, max_length=32)
 
     @field_validator("content", mode="after")
     @classmethod

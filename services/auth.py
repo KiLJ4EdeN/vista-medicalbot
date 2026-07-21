@@ -195,7 +195,6 @@ async def change_password(
 
     now = datetime.now(UTC)
     user.password_hash = hash_password(new_password)
-    user.password_changed_at = now
     await session.execute(
         update(RefreshToken)
         .where(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))

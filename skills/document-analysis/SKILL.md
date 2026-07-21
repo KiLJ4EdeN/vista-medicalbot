@@ -1,5 +1,5 @@
 ---
-name: document_analysis
+name: document-analysis
 description: Analyze a session PDF or medical image with OCR/VLM while preserving uncertainty.
 ---
 

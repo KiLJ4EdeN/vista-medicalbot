@@ -12,7 +12,6 @@ class AdminUserResponse(BaseModel):
     full_name: str
     is_active: bool
     last_activity_at: datetime | None
-    password_changed_at: datetime | None
     created_at: datetime
     updated_at: datetime
 

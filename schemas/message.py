@@ -7,7 +7,15 @@ from pydantic import BaseModel, ConfigDict
 from models.enums import MessageRole, MessageStatus
 
 
-class MessageResponse(BaseModel):
+class ImageAttachment(BaseModel):
+    id: UUID
+    original_filename: str
+    content_type: str
+    size_bytes: int
+    download_url: str | None = None
+
+
+class ChatMessage(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -15,12 +23,13 @@ class MessageResponse(BaseModel):
     status: MessageStatus
     sequence_number: int
     content: str
-    extra_data: dict[str, Any]
+    payload: dict[str, Any]
     created_at: datetime
+    attachments: list[ImageAttachment] = []
 
 
-class MessageListResponse(BaseModel):
-    items: list[MessageResponse]
+class ChatMessageList(BaseModel):
+    items: list[ChatMessage]
     total: int
     offset: int
     limit: int

@@ -9,17 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
 from core.exceptions import ExternalServiceError, NotFoundError
-from models import ChatSession, Upload
+from models import Session, Upload
 from models.enums import ProcessingStatus
 from services.documents import validate_document_upload
-from services.sessions import get_owned_session
+from services.sessions import get_session
 from services.storage import presigned_download_url, put_object, remove_object
 
 
 async def create_upload(
     db: AsyncSession, user_id: UUID, session_id: UUID, file: UploadFile
 ) -> Upload:
-    chat_session = await get_owned_session(db, user_id, session_id)
+    chat_session = await get_session(db, user_id, session_id)
     document = await validate_document_upload(file)
     object_key = f"sessions/{chat_session.user_id}/{session_id}/{uuid4()}{document.suffix}"
 
@@ -54,12 +54,12 @@ async def create_upload(
 async def get_owned_upload(db: AsyncSession, user_id: UUID, upload_id: UUID) -> Upload:
     upload = await db.scalar(
         select(Upload)
-        .join(ChatSession, ChatSession.id == Upload.session_id)
+        .join(Session, Session.id == Upload.session_id)
         .where(
             Upload.id == upload_id,
             Upload.deleted_at.is_(None),
-            ChatSession.user_id == user_id,
-            ChatSession.deleted_at.is_(None),
+            Session.user_id == user_id,
+            Session.deleted_at.is_(None),
         )
     )
     if upload is None:
@@ -68,7 +68,7 @@ async def get_owned_upload(db: AsyncSession, user_id: UUID, upload_id: UUID) -> 
 
 
 async def list_session_uploads(db: AsyncSession, user_id: UUID, session_id: UUID) -> list[Upload]:
-    await get_owned_session(db, user_id, session_id)
+    await get_session(db, user_id, session_id)
     return list(
         await db.scalars(
             select(Upload)

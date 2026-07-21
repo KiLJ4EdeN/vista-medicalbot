@@ -5,16 +5,16 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import NotFoundError
-from models import ChatSession, Message, Upload, User
+from models import ChatMessage, Session, Upload, User
 
 
-async def get_owned_session(
+async def get_session(
     db: AsyncSession, user_id: UUID, session_id: UUID, *, for_update: bool = False
-) -> ChatSession:
-    query = select(ChatSession).where(
-        ChatSession.id == session_id,
-        ChatSession.user_id == user_id,
-        ChatSession.deleted_at.is_(None),
+) -> Session:
+    query = select(Session).where(
+        Session.id == session_id,
+        Session.user_id == user_id,
+        Session.deleted_at.is_(None),
     )
     if for_update:
         query = query.with_for_update()
@@ -24,24 +24,24 @@ async def get_owned_session(
     return chat_session
 
 
-async def create_chat_session(db: AsyncSession, user: User, *, title: str | None) -> ChatSession:
-    chat_session = ChatSession(user_id=user.id, title=title)
+async def create_session(db: AsyncSession, user: User, *, title: str | None) -> Session:
+    chat_session = Session(user_id=user.id, title=title)
     db.add(chat_session)
     await db.commit()
     await db.refresh(chat_session)
     return chat_session
 
 
-async def list_chat_sessions(
+async def list_sessions(
     db: AsyncSession, user_id: UUID, *, offset: int, limit: int
-) -> tuple[list[ChatSession], int]:
-    filters = (ChatSession.user_id == user_id, ChatSession.deleted_at.is_(None))
-    total = await db.scalar(select(func.count()).select_from(ChatSession).where(*filters))
+) -> tuple[list[Session], int]:
+    filters = (Session.user_id == user_id, Session.deleted_at.is_(None))
+    total = await db.scalar(select(func.count()).select_from(Session).where(*filters))
     items = list(
         await db.scalars(
-            select(ChatSession)
+            select(Session)
             .where(*filters)
-            .order_by(ChatSession.updated_at.desc(), ChatSession.id.desc())
+            .order_by(Session.updated_at.desc(), Session.id.desc())
             .offset(offset)
             .limit(limit)
         )
@@ -49,18 +49,18 @@ async def list_chat_sessions(
     return items, total or 0
 
 
-async def update_chat_session(
+async def rename_session(
     db: AsyncSession, user_id: UUID, session_id: UUID, *, title: str
-) -> ChatSession:
-    chat_session = await get_owned_session(db, user_id, session_id, for_update=True)
+) -> Session:
+    chat_session = await get_session(db, user_id, session_id, for_update=True)
     chat_session.title = title
     await db.commit()
     await db.refresh(chat_session)
     return chat_session
 
 
-async def delete_chat_session(db: AsyncSession, user_id: UUID, session_id: UUID) -> None:
-    chat_session = await get_owned_session(db, user_id, session_id, for_update=True)
+async def delete_session(db: AsyncSession, user_id: UUID, session_id: UUID) -> None:
+    chat_session = await get_session(db, user_id, session_id, for_update=True)
     deleted_at = datetime.now(UTC)
     chat_session.deleted_at = deleted_at
     await db.execute(
@@ -71,18 +71,18 @@ async def delete_chat_session(db: AsyncSession, user_id: UUID, session_id: UUID)
     await db.commit()
 
 
-async def list_session_messages(
+async def load_messages(
     db: AsyncSession, user_id: UUID, session_id: UUID, *, offset: int, limit: int
-) -> tuple[list[Message], int]:
-    await get_owned_session(db, user_id, session_id)
+) -> tuple[list[ChatMessage], int]:
+    await get_session(db, user_id, session_id)
     total = await db.scalar(
-        select(func.count()).select_from(Message).where(Message.session_id == session_id)
+        select(func.count()).select_from(ChatMessage).where(ChatMessage.session_id == session_id)
     )
     messages = list(
         await db.scalars(
-            select(Message)
-            .where(Message.session_id == session_id)
-            .order_by(Message.sequence_number.asc())
+            select(ChatMessage)
+            .where(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.sequence_number.asc())
             .offset(offset)
             .limit(limit)
         )
