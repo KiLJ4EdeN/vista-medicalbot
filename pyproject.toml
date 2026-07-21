@@ -9,6 +9,7 @@ description = "Multilingual medical assistant backend"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.18.5",
     "asyncpg>=0.30.0",
     "email-validator>=2.2.0",
     "fastapi>=0.115.0",
@@ -48,6 +49,7 @@ filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

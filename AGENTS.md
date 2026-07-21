@@ -58,7 +58,8 @@ Provider calls cannot be considered validated without actual credentials.
 - Python 3.12+
 - ASCII by default in source files; multilingual content belongs in prompts or
   user/provider data.
-- No Alembic migrations yet; startup uses `create_all`.
+- Alembic migrations live in `alembic/versions/`. Run `alembic upgrade head` before
+  deploying; startup `create_all` is a dev convenience only.
 - Tests are deferred by current product decision.
 - Runtime configuration and secrets remain environment-only.
 

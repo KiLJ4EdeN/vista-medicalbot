@@ -29,8 +29,7 @@ speech-to-text.
 2. Set at least these secrets in `.env`:
 
    ```dotenv
-   POSTGRES_PASSWORD=change-me        # docker-compose postgres root
-   POSTGRES_PW=change-me              # local-dev postgres password
+   POSTGRES_PASSWORD=change-me        # postgres root password
    MINIO_ROOT_PASSWORD=change-me      # docker-compose minio admin
    MINIO_SECRET_KEY=change-me         # local-dev minio secret
    JWT_SECRET=use-a-long-random-secret
@@ -86,9 +85,32 @@ auto-construction entirely.
 
 `MINIO_PUBLIC_ENDPOINT` is the browser-reachable host used when signing
 download URLs; set it and `MINIO_PUBLIC_SECURE` to the deployed MinIO domain
-and HTTPS behavior outside local Docker. Tables are created from ORM metadata
-during startup; Alembic migrations are intentionally deferred for this initial
-version.
+and HTTPS behavior outside local Docker.
+
+## Database Migrations
+
+Schema changes are managed with Alembic. After modifying a model, generate a
+migration:
+
+```bash
+alembic revision --autogenerate -m "description of change"
+```
+
+Review the generated file, then apply it:
+
+```bash
+alembic upgrade head
+```
+
+To roll back the last migration:
+
+```bash
+alembic downgrade -1
+```
+
+The initial migration (`482a5632357e`) creates all tables. In development,
+startup auto-creates tables via ORM metadata for convenience; in production
+always use `alembic upgrade head`.
 
 Static validation commands:
 
