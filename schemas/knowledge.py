@@ -11,10 +11,6 @@ class KnowledgeResponse(BaseModel):
 
     id: UUID
     title: str
-    description: str | None
-    source: str
-    publication_year: int | None
-    tags: list[str]
     original_filename: str
     content_type: str
     size_bytes: int
@@ -36,10 +32,6 @@ class KnowledgeListResponse(BaseModel):
 
 class KnowledgeUpdateRequest(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=300)
-    description: str | None = Field(default=None, max_length=5000)
-    source: str | None = Field(default=None, min_length=1, max_length=300)
-    publication_year: int | None = Field(default=None, ge=1800, le=2200)
-    tags: list[str] | None = Field(default=None, max_length=50)
 
     @model_validator(mode="after")
     def require_change(self) -> "KnowledgeUpdateRequest":
@@ -51,17 +43,11 @@ class KnowledgeUpdateRequest(BaseModel):
 class KnowledgeSearchRequest(BaseModel):
     query: str = Field(min_length=2, max_length=4000)
     limit: int = Field(default=6, ge=1, le=50)
-    source: str | None = Field(default=None, max_length=300)
-    publication_year: int | None = Field(default=None, ge=1800, le=2200)
-    tags: list[str] = Field(default_factory=list, max_length=20)
 
 
 class KnowledgeSearchHit(BaseModel):
     knowledge_id: UUID
     title: str
-    source: str
-    publication_year: int | None
-    tags: list[str]
     chunk_index: int
     content: str
     score: float

@@ -22,9 +22,6 @@ ARABIC_DIACRITICS = re.compile(r"[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed]
 class KnowledgeChunk:
     content: str
     title: str
-    source: str
-    publication_year: int | None
-    tags: list[str]
     knowledge_id: UUID
     chunk_index: int
 
@@ -33,9 +30,6 @@ class KnowledgeChunk:
 class SearchHit:
     content: str
     title: str
-    source: str
-    publication_year: int | None
-    tags: list[str]
     knowledge_id: UUID
     chunk_index: int
     score: float
@@ -145,9 +139,6 @@ async def index_chunks(chunks: list[KnowledgeChunk]) -> None:
             payload={
                 "content": chunk.content,
                 "title": chunk.title,
-                "source": chunk.source,
-                "publication_year": chunk.publication_year,
-                "tags": chunk.tags,
                 "knowledge_id": str(chunk.knowledge_id),
                 "chunk_index": chunk.chunk_index,
             },
@@ -196,9 +187,6 @@ async def hybrid_search(
     query: str,
     *,
     limit: int | None = None,
-    source: str | None = None,
-    publication_year: int | None = None,
-    tags: list[str] | None = None,
 ) -> list[SearchHit]:
     settings = get_settings()
     result_limit = limit or settings.rag_result_limit
@@ -206,23 +194,6 @@ async def hybrid_search(
         embed_texts([query]), embed_sparse([query])
     )
     client = get_qdrant_client()
-    conditions: list[models.Condition] = []
-    if source is not None:
-        conditions.append(
-            models.FieldCondition(key="source", match=models.MatchValue(value=source))
-        )
-    if publication_year is not None:
-        conditions.append(
-            models.FieldCondition(
-                key="publication_year", match=models.MatchValue(value=publication_year)
-            )
-        )
-    conditions.extend(
-        models.FieldCondition(key="tags", match=models.MatchValue(value=tag))
-        for raw_tag in tags or []
-        if (tag := raw_tag.strip().lower())
-    )
-    query_filter = models.Filter(must=conditions) if conditions else None
     try:
         if not await client.collection_exists(settings.qdrant_collection):
             return []
@@ -235,7 +206,6 @@ async def hybrid_search(
                 ),
             ],
             query=models.FusionQuery(fusion=models.Fusion.RRF),
-            query_filter=query_filter,
             limit=result_limit,
             with_payload=True,
         )
@@ -250,9 +220,6 @@ async def hybrid_search(
                 SearchHit(
                     content=_payload_value(payload, "content", str),
                     title=_payload_value(payload, "title", str),
-                    source=_payload_value(payload, "source", str),
-                    publication_year=payload.get("publication_year"),
-                    tags=_payload_value(payload, "tags", list),
                     knowledge_id=UUID(_payload_value(payload, "knowledge_id", str)),
                     chunk_index=_payload_value(payload, "chunk_index", int),
                     score=point.score,

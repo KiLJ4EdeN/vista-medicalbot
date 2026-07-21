@@ -72,7 +72,6 @@ async def test_chat_with_knowledge_search(
     files = {
         "file": ("NCCN.pdf", pdf_path.read_bytes(), "application/pdf"),
         "title": (None, "NCCN Breast Cancer Guidelines"),
-        "source": (None, "NCCN"),
     }
     r = await client.post("/knowledge", files=files, headers=admin_headers)
     assert r.status_code == 202

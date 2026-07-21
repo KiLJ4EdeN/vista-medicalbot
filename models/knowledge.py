@@ -1,4 +1,4 @@
-from sqlalchemy import ARRAY, BigInteger, Column, DateTime, Index, Integer, String, Text
+from sqlalchemy import BigInteger, Column, DateTime, Index, Integer, String, Text
 
 from db.base import Base, SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin
 from models.enums import ProcessingStatus, enum_type
@@ -9,10 +9,6 @@ class KnowledgeEntry(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base)
     __table_args__ = (Index("ix_knowledge_status_deleted", "status", "deleted_at"),)
 
     title = Column(String(300))
-    description = Column(Text, default=None)
-    source = Column(String(300))
-    publication_year = Column(Integer, default=None, index=True)
-    tags = Column(ARRAY(String(100)), default=list)
     object_key = Column(String(1024), unique=True)
     original_filename = Column(String(255))
     content_type = Column(String(100))

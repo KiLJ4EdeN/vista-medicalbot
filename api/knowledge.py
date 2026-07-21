@@ -34,22 +34,10 @@ async def upload_knowledge(
     background_tasks: BackgroundTasks,
     file: Annotated[UploadFile, File()],
     title: Annotated[str, Form(min_length=1, max_length=300)],
-    source: Annotated[str, Form(min_length=1, max_length=300)],
     db: DatabaseSession,
     _admin: AdminAccess,
-    description: Annotated[str | None, Form(max_length=5000)] = None,
-    publication_year: Annotated[int | None, Form(ge=1800, le=2200)] = None,
-    tags: Annotated[str, Form(description="Comma-separated tags")] = "",
 ) -> KnowledgeResponse:
-    entry = await create_knowledge_entry(
-        db,
-        file,
-        title=title,
-        description=description,
-        source=source,
-        publication_year=publication_year,
-        tags=tags.split(","),
-    )
+    entry = await create_knowledge_entry(db, file, title=title)
     background_tasks.add_task(process_knowledge_entry, entry.id)
     return KnowledgeResponse.model_validate(entry)
 
@@ -69,21 +57,12 @@ async def get_knowledge_entries(
 async def test_knowledge_search(
     payload: KnowledgeSearchRequest, _admin: AdminAccess
 ) -> KnowledgeSearchResponse:
-    hits = await hybrid_search(
-        payload.query,
-        limit=payload.limit,
-        source=payload.source,
-        publication_year=payload.publication_year,
-        tags=payload.tags,
-    )
+    hits = await hybrid_search(payload.query, limit=payload.limit)
     return KnowledgeSearchResponse(
         items=[
             KnowledgeSearchHit(
                 knowledge_id=hit.knowledge_id,
                 title=hit.title,
-                source=hit.source,
-                publication_year=hit.publication_year,
-                tags=hit.tags,
                 chunk_index=hit.chunk_index,
                 content=hit.content,
                 score=hit.score,

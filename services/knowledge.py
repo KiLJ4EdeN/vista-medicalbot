@@ -26,22 +26,14 @@ from services.vector import KnowledgeChunk, delete_knowledge_vectors, index_chun
 from services.vlm import extract_text_with_vlm
 
 
-def normalize_tags(tags: list[str]) -> list[str]:
-    return list(dict.fromkeys(tag.strip().lower() for tag in tags if tag.strip()))[:50]
-
-
 async def create_knowledge_entry(
     db: AsyncSession,
     file: UploadFile,
     *,
     title: str,
-    description: str | None,
-    source: str,
-    publication_year: int | None,
-    tags: list[str],
 ) -> KnowledgeEntry:
-    if not title.strip() or not source.strip():
-        raise InvalidInputError("Knowledge title and source cannot be blank")
+    if not title.strip():
+        raise InvalidInputError("Knowledge title cannot be blank")
     document = await validate_document_upload(file)
     entry_id = uuid4()
     object_key = f"knowledge/{entry_id}{document.suffix}"
@@ -54,10 +46,6 @@ async def create_knowledge_entry(
     entry = KnowledgeEntry(
         id=entry_id,
         title=title.strip(),
-        description=description.strip() if description else None,
-        source=source.strip(),
-        publication_year=publication_year,
-        tags=normalize_tags(tags),
         object_key=object_key,
         original_filename=document.original_filename,
         content_type=document.content_type,
@@ -110,14 +98,10 @@ async def update_knowledge_entry(
 ) -> KnowledgeEntry:
     entry = await get_knowledge_entry(db, entry_id)
     for field, value in changes.items():
-        if field in {"title", "source"} and isinstance(value, str):
+        if field == "title" and isinstance(value, str):
             value = value.strip()
             if not value:
-                raise InvalidInputError(f"Knowledge {field} cannot be blank")
-        elif field == "description" and isinstance(value, str):
-            value = value.strip() or None
-        elif field == "tags" and isinstance(value, list):
-            value = normalize_tags([tag for tag in value if isinstance(tag, str)])
+                raise InvalidInputError("Knowledge title cannot be blank")
         setattr(entry, field, value)
     entry.status = ProcessingStatus.PENDING
     entry.processing_error = None
@@ -201,9 +185,6 @@ async def process_knowledge_entry(entry_id: UUID) -> None:
                     KnowledgeChunk(
                         content=content,
                         title=entry.title,
-                        source=entry.source,
-                        publication_year=entry.publication_year,
-                        tags=entry.tags,
                         knowledge_id=entry.id,
                         chunk_index=index,
                     )

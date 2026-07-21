@@ -19,8 +19,6 @@ async def search_medical_guidelines(query: str) -> str:
                 [
                     f"[Result {index}]",
                     f"Title: {hit.title}",
-                    f"Source: {hit.source}",
-                    f"Year: {hit.publication_year or 'not provided'}",
                     f"Chunk: {hit.chunk_index}",
                     f"Score: {hit.score:.4f}",
                     f"Content: {hit.content}",

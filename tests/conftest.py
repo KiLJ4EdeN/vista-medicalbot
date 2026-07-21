@@ -7,10 +7,14 @@ import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 
+from core.config import get_settings
+
+_settings = get_settings()
+
 JWT_SECRET = os.environ.get("JWT_SECRET", "test-jwt-secret-key-at-least-32-chars!!")
 ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "test-admin-key-16+")
-LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
-MULTIMODAL_API_KEY = os.environ.get("MULTIMODAL_API_KEY", "")
+LLM_API_KEY = _settings.llm_api_key.get_secret_value()
+MULTIMODAL_API_KEY = _settings.multimodal_api_key.get_secret_value()
 
 os.environ.setdefault("JWT_SECRET", JWT_SECRET)
 os.environ.setdefault("ADMIN_API_KEY", ADMIN_API_KEY)

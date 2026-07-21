@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     postgres_host: str = "localhost"
     postgres_port: int = 5432
     postgres_user: str = "postgres"
-    postgres_pw: SecretStr = SecretStr("postgres")
+    postgres_password: SecretStr = SecretStr("postgres")
     postgres_db: str = "postgres"
     database_url: str = ""
 
@@ -69,7 +69,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def assemble_urls(self) -> "Settings":
         if not self.database_url:
-            pw = self.postgres_pw.get_secret_value()
+            pw = self.postgres_password.get_secret_value()
             self.database_url = (
                 f"postgresql+asyncpg://{self.postgres_user}:{pw}"
                 f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"

@@ -23,9 +23,6 @@ async def test_knowledge_upload_and_search(
     files = {
         "file": ("NCCN.pdf", pdf_path.read_bytes(), "application/pdf"),
         "title": (None, "NCCN Breast Cancer Guidelines"),
-        "source": (None, "NCCN"),
-        "publication_year": (None, "2025"),
-        "tags": (None, "breast-cancer, oncology, guidelines"),
     }
     r = await client.post("/knowledge", files=files, headers=admin_headers)
     assert r.status_code == 202, f"Upload failed: {r.text}"
