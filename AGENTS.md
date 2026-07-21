@@ -3,8 +3,8 @@
 ## Source of Truth
 
 Read `SPEC.md` before changing behavior. Update it whenever a product or
-architecture decision changes. `README.md` describes operation and public API
-usage; it must remain consistent with the spec.
+architecture decision changes. `README.md` is a terse dev-to-dev quick-start;
+keep it minimal. AGENTS.md is the working reference.
 
 ## Architecture
 
