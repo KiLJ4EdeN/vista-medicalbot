@@ -45,9 +45,9 @@ so the model can recover without escaping the tool loop.
 Run before finishing a change:
 
 ```bash
-uvx ruff check api core db models schemas services main.py
-uvx ruff format --check api core db models schemas services main.py
-uvx ty check api core db models schemas services main.py
+uvx ruff check api core db models schemas services
+uvx ruff format --check api core db models schemas services
+uvx ty check api core db models schemas services
 ```
 
 Also generate OpenAPI and compile ORM metadata when routes or models change.
@@ -60,7 +60,8 @@ Provider calls cannot be considered validated without actual credentials.
   user/provider data.
 - Alembic migrations live in `alembic/versions/`. Run `alembic upgrade head` before
   deploying; startup `create_all` is a dev convenience only.
-- Tests are deferred by current product decision.
+- Tests are deferred by current product decision; 3 integration tests exist
+  in tests/ and require docker-compose infra + env vars to run.
 - Runtime configuration and secrets remain environment-only.
 
 ## Comments

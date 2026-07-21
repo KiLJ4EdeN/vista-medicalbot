@@ -67,7 +67,7 @@ Then start the app locally:
 
 ```bash
 uv sync
-uv run uvicorn main:app --reload
+uv run uvicorn api.main:app --reload
 ```
 
 Environment variables read from `.env`. Service URLs auto-construct from
@@ -115,9 +115,9 @@ always use `alembic upgrade head`.
 Static validation commands:
 
 ```bash
-uvx ruff check api core db models schemas services main.py
-uvx ruff format --check api core db models schemas services main.py
-uvx ty check api core db models schemas services main.py
+uvx ruff check api core db models schemas services
+uvx ruff format --check api core db models schemas services
+uvx ty check api core db models schemas services
 ```
 
 ## Authentication
