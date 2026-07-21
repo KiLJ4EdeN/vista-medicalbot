@@ -9,7 +9,7 @@ usage; it must remain consistent with the spec.
 ## Architecture
 
 - `api/`: FastAPI transport, dependencies, and HTTP contracts
-- `core/`: settings, security, content loading, and shared exceptions
+- `core/`: settings, security, skill/prompt loading, and shared exceptions
 - `db/`: PostgreSQL, MinIO, and Qdrant client construction
 - `models/`: SQLAlchemy persistence models
 - `schemas/`: Pydantic request and response models

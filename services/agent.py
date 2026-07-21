@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
-from core.content import load_prompt, skill_catalog
+from core.skills import load_prompt, skill_catalog
 from models import ChatMessage
 from models.enums import MessageRole
 from services.tools import load_skill, make_file_tool, search_medical_guidelines

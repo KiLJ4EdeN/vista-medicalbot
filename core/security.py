@@ -22,10 +22,20 @@ def verify_password(password: str, encoded_password: str) -> bool:
 
 
 def hash_token(token: str) -> str:
+    """SHA-256 hex digest of a JWT string.
+
+    Used instead of storing the raw token in the database so a DB
+    breach leaks only hashes, not usable refresh tokens.
+    """
     return sha256(token.encode()).hexdigest()
 
 
 def create_access_token(user_id: UUID) -> str:
+    """Short-lived JWT (minutes) carrying user identity.
+
+    Payload: sub (user_id), type: "access", iat, exp.
+    The type claim prevents this from being used as a refresh token.
+    """
     settings = get_settings()
     now = datetime.now(UTC)
     payload = {
@@ -42,6 +52,12 @@ def create_access_token(user_id: UUID) -> str:
 
 
 def create_refresh_token(user_id: UUID, token_id: UUID, family_id: UUID) -> tuple[str, datetime]:
+    """Long-lived JWT (days) with rotation tracking fields.
+
+    Payload: sub, type: "refresh", jti (token_id for lookup),
+    family (theft-detection group), iat, exp.
+    The token string is hashed before storage; only the hash persists.
+    """
     settings = get_settings()
     now = datetime.now(UTC)
     expires_at = now + timedelta(days=settings.refresh_token_expire_days)
@@ -62,6 +78,12 @@ def create_refresh_token(user_id: UUID, token_id: UUID, family_id: UUID) -> tupl
 
 
 def decode_token(token: str, expected_type: str) -> dict[str, Any]:
+    """Verify JWT signature, expiry, required claims, and type field.
+
+    Shared by both access and refresh token paths. The caller specifies
+    expected_type ("access" or "refresh") so a token of one type cannot
+    be used against endpoints expecting the other.
+    """
     settings = get_settings()
     try:
         payload = jwt.decode(

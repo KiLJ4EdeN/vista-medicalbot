@@ -2,7 +2,7 @@ from typing import Literal
 
 from langchain_core.tools import tool
 
-from core.content import load_skills
+from core.skills import load_skills
 
 
 @tool
