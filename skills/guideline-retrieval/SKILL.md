@@ -11,6 +11,6 @@ covered by shared clinical guidance.
 
 Form a short, medically specific search query. Include the condition, modality,
 or intervention rather than conversational filler. Use retrieved chunks only
-for claims they actually support. Cite each used result as source, title,
-publication year when available, and chunk number. If results are weak or
-absent, state that the shared knowledge did not establish an answer.
+for claims they actually support. Cite each used result by title and chunk
+number. If results are weak or absent, state that the shared knowledge did
+not establish an answer.

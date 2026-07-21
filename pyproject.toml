@@ -31,9 +31,6 @@ dependencies = [
     "uvicorn[standard]>=0.34.0",
 ]
 
-[tool.setuptools]
-py-modules = ["main"]
-
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["api*", "core*", "db*", "models*", "schemas*", "services*"]

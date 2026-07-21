@@ -38,8 +38,8 @@ async def app() -> AsyncIterator[FastAPI]:
         await qdrant.delete_collection(get_settings().qdrant_collection)
     await qdrant.close()
 
-    from main import app as fastapi_app
-    from main import lifespan
+    from api.main import app as fastapi_app
+    from api.main import lifespan
 
     async with lifespan(fastapi_app):
         yield fastapi_app
