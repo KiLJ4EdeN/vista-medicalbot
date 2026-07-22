@@ -22,20 +22,20 @@ class RegisterRequest(BaseModel):
         return normalized
 
 
-class RefreshRequest(BaseModel):
-    refresh_token: str = Field(min_length=1)
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email", mode="after")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).lower()
 
 
-class LogoutRequest(RefreshRequest):
-    pass
-
-
-class TokenPair(BaseModel):
-    access_token: str
-    refresh_token: str
+class AuthToken(BaseModel):
+    token: str
     token_type: str = "bearer"
-    expires_in: int
 
 
-class AuthResponse(TokenPair):
+class AuthResponse(AuthToken):
     user: UserResponse

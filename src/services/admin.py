@@ -3,13 +3,13 @@ from datetime import UTC, datetime, time, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from core.config import get_settings
 from core.exceptions import NotFoundError
-from models import ChatMessage, RefreshToken, Session, User
+from models import ChatMessage, Session, User
 from models.enums import MessageRole
 
 
@@ -72,13 +72,6 @@ async def set_user_active(db: AsyncSession, user_id: UUID, *, is_active: bool) -
         return user
 
     user.is_active = is_active
-    if not is_active:
-        now = datetime.now(UTC)
-        await db.execute(
-            update(RefreshToken)
-            .where(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))
-            .values(revoked_at=now, revoke_reason="user_deactivated")
-        )
     await db.commit()
     await db.refresh(user)
     return user

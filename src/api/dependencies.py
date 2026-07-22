@@ -1,39 +1,35 @@
 from datetime import UTC, datetime
 from hmac import compare_digest
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import Depends, HTTPException, Security, status
-from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_settings
-from core.exceptions import TokenError
-from core.security import decode_token
 from db.session import get_db
 from models import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+bearer_scheme = HTTPBearer(auto_error=False)
 admin_api_key_header = APIKeyHeader(name="x-api-key", auto_error=False)
 
 DatabaseSession = Annotated[AsyncSession, Depends(get_db)]
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)], session: DatabaseSession
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Security(bearer_scheme)],
+    session: DatabaseSession,
 ) -> User:
     unauthorized = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid or expired access token",
+        detail="Invalid bearer token",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    try:
-        payload = decode_token(token, "access")
-        user_id = UUID(payload["sub"])
-    except (KeyError, TypeError, ValueError, TokenError) as error:
-        raise unauthorized from error
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise unauthorized
 
-    user = await session.get(User, user_id)
+    user = await session.scalar(select(User).where(User.api_token == credentials.credentials))
     if user is None:
         raise unauthorized
     if not user.is_active:

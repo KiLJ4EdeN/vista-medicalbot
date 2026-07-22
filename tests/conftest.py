@@ -11,12 +11,10 @@ from core.config import get_settings
 
 _settings = get_settings()
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "test-jwt-secret-key-at-least-32-chars!!")
 ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "test-admin-key-16+")
 LLM_API_KEY = _settings.llm_api_key.get_secret_value()
 MULTIMODAL_API_KEY = _settings.multimodal_api_key.get_secret_value()
 
-os.environ.setdefault("JWT_SECRET", JWT_SECRET)
 os.environ.setdefault("ADMIN_API_KEY", ADMIN_API_KEY)
 
 skip_if_no_llm = pytest.mark.skipif(not LLM_API_KEY, reason="LLM_API_KEY not set")
@@ -64,7 +62,7 @@ async def user_token(client: httpx.AsyncClient) -> str:
     )
     assert r.status_code == 201, f"Registration failed: {r.text}"
     data = r.json()
-    return data["access_token"]
+    return data["token"]
 
 
 @pytest_asyncio.fixture(scope="function")
