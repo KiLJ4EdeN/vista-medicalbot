@@ -10,7 +10,6 @@ from pypdf.errors import PdfReadError
 
 from core.config import get_settings
 from core.exceptions import InvalidInputError
-from models.enums import UploadKind
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,18 +20,17 @@ class ValidatedDocument:
     suffix: str
     size_bytes: int
     sha256: str
-    kind: UploadKind
 
 
-def _detect_file_type(header: bytes) -> tuple[UploadKind, str, str] | None:
+def _detect_file_type(header: bytes) -> tuple[str, str] | None:
     if header.startswith(b"%PDF-"):
-        return UploadKind.PDF, "application/pdf", ".pdf"
+        return "application/pdf", ".pdf"
     if header.startswith(b"\xff\xd8\xff"):
-        return UploadKind.IMAGE, "image/jpeg", ".jpg"
+        return "image/jpeg", ".jpg"
     if header.startswith(b"\x89PNG\r\n\x1a\n"):
-        return UploadKind.IMAGE, "image/png", ".png"
+        return "image/png", ".png"
     if len(header) >= 12 and header.startswith(b"RIFF") and header[8:12] == b"WEBP":
-        return UploadKind.IMAGE, "image/webp", ".webp"
+        return "image/webp", ".webp"
     return None
 
 
@@ -54,8 +52,8 @@ async def validate_document_upload(file: UploadFile) -> ValidatedDocument:
     detected = _detect_file_type(data[:16])
     if detected is None:
         raise InvalidInputError("Only PDF, JPEG, PNG, and WebP files are supported")
-    kind, content_type, suffix = detected
-    if kind == UploadKind.PDF:
+    content_type, suffix = detected
+    if content_type == "application/pdf":
         page_count = await asyncio.to_thread(_count_pdf_pages, data)
         if page_count > settings.max_pdf_pages:
             raise InvalidInputError(
@@ -71,5 +69,4 @@ async def validate_document_upload(file: UploadFile) -> ValidatedDocument:
         suffix=suffix,
         size_bytes=len(data),
         sha256=sha256(data).hexdigest(),
-        kind=kind,
     )

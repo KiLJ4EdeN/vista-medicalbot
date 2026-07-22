@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import get_settings
 from core.exceptions import ExternalServiceError, NotFoundError
 from models import Session, Upload
-from models.enums import ProcessingStatus
 from services.documents import validate_document_upload
 from services.sessions import get_session
 from services.storage import presigned_download_url, put_object, remove_object
@@ -36,8 +35,6 @@ async def create_upload(
         content_type=document.content_type,
         size_bytes=document.size_bytes,
         sha256=document.sha256,
-        kind=document.kind,
-        processing_status=ProcessingStatus.PENDING,
     )
     db.add(upload)
     try:

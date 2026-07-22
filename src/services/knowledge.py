@@ -14,8 +14,8 @@ from core.config import get_settings
 from core.exceptions import ExternalServiceError, InvalidInputError, NotFoundError
 from db.session import async_session_factory
 from models import KnowledgeEntry
-from models.enums import ProcessingStatus, UploadKind
-from services.documents import ValidatedDocument, validate_document_upload
+from models.enums import ProcessingStatus
+from services.documents import validate_document_upload
 from services.storage import (
     get_object_bytes,
     presigned_download_url,
@@ -127,23 +127,14 @@ async def mark_knowledge_deleted(db: AsyncSession, entry_id: UUID) -> KnowledgeE
     return entry
 
 
-def _extract_pdf_text(document: ValidatedDocument) -> str:
-    reader = PdfReader(BytesIO(document.data), strict=False)
+def _extract_pdf_text(data: bytes) -> str:
+    reader = PdfReader(BytesIO(data), strict=False)
     return "\n\n".join(page.extract_text() or "" for page in reader.pages).strip()
 
 
 async def _extract_text(entry: KnowledgeEntry, data: bytes) -> str:
     if entry.content_type == "application/pdf":
-        document = ValidatedDocument(
-            data=data,
-            original_filename=entry.original_filename,
-            content_type=entry.content_type,
-            suffix=".pdf",
-            size_bytes=entry.size_bytes,
-            sha256=entry.sha256,
-            kind=UploadKind.PDF,
-        )
-        text = await asyncio.to_thread(_extract_pdf_text, document)
+        text = await asyncio.to_thread(_extract_pdf_text, data)
         if len(text) >= 200:
             return text
     return await extract_text_with_vlm(data, entry.content_type, entry.original_filename)

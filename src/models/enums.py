@@ -14,11 +14,6 @@ class MessageStatus(StrEnum):
     FAILED = "failed"
 
 
-class UploadKind(StrEnum):
-    PDF = "pdf"
-    IMAGE = "image"
-
-
 class ProcessingStatus(StrEnum):
     PENDING = "pending"
     PROCESSING = "processing"
