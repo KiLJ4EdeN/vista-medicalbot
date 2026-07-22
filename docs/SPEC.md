@@ -18,8 +18,9 @@ and is not exposed through an admin settings panel.
 
 ## Roles
 
-- **User**: registers with email, full name, and password; manages their
-  profile and password; creates chat sessions; and uploads session-scoped files.
+- **User**: registers with email, full name, and password; receives one
+  non-expiring bearer token; manages their profile and password; creates chat
+  sessions; and uploads session-scoped files.
 - **Admin**: authenticates with `x-api-key`, manages the shared knowledge base,
   activates or deactivates users, tests vector search, and views usage metrics.
 
@@ -36,9 +37,10 @@ user authentication endpoints.
 - Dense embeddings: hosted `bge-m3` through the OpenRouter
   OpenAI-compatible embeddings API
 - Sparse retrieval: Qdrant lexical BM25 sparse vectors
-- Agent: LangChain tool-calling agent with a recursion limit, skills, and RAG
-- Authentication: short-lived access JWTs and rotating, revocable refresh JWTs
-  for users; `x-api-key` over HTTPS for administrators
+- Agent: custom textual ReAct loop using LangChain tool abstractions, with a
+  recursion limit, skills, and RAG; dr7 does not provide native tool calls
+- Authentication: one opaque, non-expiring bearer token per user; `x-api-key`
+  over HTTPS for administrators
 
 Hybrid search combines the hosted dense vectors with Qdrant BM25 sparse
 vectors. It must account for Persian and Arabic spelling variants. Prompt
@@ -52,29 +54,32 @@ where doing so reduces complexity.
 
 ```text
 ├── AGENTS.md
-├── api/           # FastAPI routers and dependencies
-├── core/          # configuration, security, shared utilities
-├── db/            # database and external-store connectors
+├── alembic/       # database migrations
 ├── docker-compose.yml
 ├── Dockerfile
 ├── docs/          # additional documentation
-├── models/        # SQLAlchemy ORM models
-├── prompts/       # prompt markdown files
 ├── pyproject.toml # uv-based Python project
 ├── README.md
-├── schemas/       # Pydantic request/response schemas
-├── scripts/       # operational utilities
-├── services/      # integrations and business logic
-├── skills/        # progressive-disclosure skill markdown files
+├── src/
+│   ├── api/       # FastAPI routers and dependencies
+│   ├── core/      # configuration, security, shared utilities
+│   ├── db/        # database and external-store connectors
+│   ├── models/    # SQLAlchemy ORM models
+│   ├── prompts/   # prompt markdown files
+│   ├── schemas/   # Pydantic request/response schemas
+│   ├── services/  # integrations and business logic
+│   └── skills/    # progressive-disclosure skill markdown files
+├── tests/         # integration and isolated agent tests
 └── uv.lock
 ```
 
 ## Features
 
-- Registration, login, refresh-token rotation, logout, and profile management
-- Password changes that revoke existing refresh tokens
+- Registration and login that return the user's permanent bearer token
+- Profile and password management without token rotation
 - Chat sessions: create, list, history, and soft-delete
-- SSE-streamed assistant responses, persisted after completion
+- SSE-delivered lifecycle, tool, and final-answer events, with completed or
+  failed assistant records persisted
 - Agent-selected tools for shared RAG, VLM image analysis, and PDF/image OCR
 - PDF, JPEG, PNG, and WebP uploads stored in MinIO and scoped to one session
 - STT through the OpenRouter multimodal OpenAI-compatible API
@@ -90,8 +95,8 @@ last-activity timestamp without WebSockets.
 
 ## Data Stores
 
-- **PostgreSQL**: users, refresh tokens, chat sessions, messages, uploads, and
-  knowledge-entry metadata
+- **PostgreSQL**: users and their permanent tokens, chat sessions, messages,
+  uploads, and knowledge-entry metadata
 - **MinIO**: session uploads and original knowledge documents
 - **Qdrant**: chunks from the administrator-managed shared knowledge base
 
@@ -102,7 +107,7 @@ require an external job queue.
 
 ## Endpoint Groups
 
-- `/auth/*`: register, login, refresh, and logout
+- `/auth/*`: register and login
 - `/profile`: view/update profile and change password
 - `/sessions/*`: session CRUD, history, and SSE agent chat
 - `/uploads/*`: session-scoped file upload, listing, and deletion
@@ -114,15 +119,18 @@ require an external job queue.
 ## Environment Contract
 
 ```dotenv
-# infra
+# postgres
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
 POSTGRES_PASSWORD=
+POSTGRES_DB=postgres
+
+# object and vector stores
 MINIO_ROOT_USER=
 MINIO_ROOT_PASSWORD=
 MINIO_BUCKET=files
-
-# db and stores
-DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres
-MINIO_ENDPOINT=minio:9000
+MINIO_ENDPOINT=localhost:9000
 MINIO_PUBLIC_ENDPOINT=localhost:9000
 MINIO_PUBLIC_SECURE=false
 MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
@@ -132,7 +140,7 @@ MAX_UPLOAD_BYTES=26214400
 MAX_AUDIO_BYTES=26214400
 MAX_PDF_PAGES=100
 DOWNLOAD_URL_EXPIRE_MINUTES=15
-QDRANT_URL=http://qdrant:6333
+QDRANT_URL=http://localhost:6333
 QDRANT_COLLECTION=medical_knowledge
 QDRANT_BM25_MODEL=Qdrant/bm25
 KNOWLEDGE_CHUNK_SIZE=1200
@@ -144,22 +152,16 @@ CHAT_HISTORY_LIMIT=50
 ONLINE_WINDOW_MINUTES=15
 
 # auth
-JWT_SECRET=
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=15
-REFRESH_TOKEN_EXPIRE_DAYS=30
 ADMIN_API_KEY=
 
 # llm
 LLM_API_URL=https://dr7.ai/api/v1/medical/chat/completions
 LLM_MODEL=baichuan-m3
-LLM_PROVIDER_TYPE=openai
 LLM_API_KEY=
 
 # multimodal / vlm / stt
 MULTIMODAL_API_URL=https://openrouter.ai/api/v1/chat/completions
 MULTIMODAL_MODEL=google/gemini-3.5-flash
-MULTIMODAL_PROVIDER_TYPE=openai
 MULTIMODAL_API_KEY=
 
 # embeddings
@@ -168,6 +170,9 @@ EMBEDDING_MODEL=baai/bge-m3
 EMBEDDING_API_KEY=
 ```
 
+For containerized application runs, Compose overrides `POSTGRES_HOST`,
+`MINIO_ENDPOINT`, and `QDRANT_URL` with Docker service hostnames.
+
 Secrets and operational configuration remain environment-only. There is no
 fixed bypass token and no runtime settings table.
 
@@ -175,14 +180,22 @@ fixed bypass token and no runtime settings table.
 
 - Tool failures are returned to the agent as text so it can self-correct.
 - Agent tool loops have a configurable recursion limit.
+- The agent emits tool and final-answer events directly; SSE does not use a
+  callback queue because dr7 currently returns complete responses.
 - Prompts are markdown files cached in memory.
 - Skill frontmatter is parsed for discovery and excluded from prompt content.
-- Refresh tokens are stored as hashes, rotated on use, and revocable by token
-  family, logout, account deactivation, or password change.
+- Each user has one opaque bearer token that does not expire or rotate. Both
+  registration and credential login return the same token. The token remains
+  stored with the user so it can be returned on later login.
+- Admin account deactivation immediately blocks the user's bearer token;
+  reactivation restores access with the same token. Password changes do not
+  change the token. There is no user logout or token refresh endpoint.
 - Chat sessions and user uploads use soft deletion. Knowledge deletion removes
   corresponding vectors and its MinIO object as background work.
-- Only user and assistant messages are persisted. Tool execution remains
-  transient, with compact diagnostic metadata allowed on assistant messages.
+- Only user and assistant message records are persisted; tool execution remains
+  transient. User payloads retain validated session-upload attachment IDs so
+  history can return attachment metadata and download URLs. Assistant records
+  may retain compact diagnostic metadata.
 - Messages have a per-session sequence number so streamed conversations retain
   deterministic ordering. Only one assistant generation may run per session.
 - Chat streams use `message_started`, `token`, `tool_started`, `tool_finished`,
@@ -190,9 +203,11 @@ fixed bypass token and no runtime settings table.
 - The agent chooses among progressive skill loading, shared guideline hybrid
   search, and current-session file OCR/VLM analysis. Tool failures are returned
   as text rather than escaping into the agent loop.
-- Knowledge entries include issuing source, publication year, and tags for
-  retrieval filtering and citations.
-- Database tables are created from ORM metadata at startup. Alembic migrations
-  are deferred for the initial greenfield version.
-- Automated tests remain deferred by the current product decision. Docker
-  Compose provides the application, PostgreSQL, MinIO, and Qdrant stack.
+- Knowledge entries currently include a title and source-document metadata.
+  Retrieved citations expose title and chunk number; source, publication-year,
+  and tag filtering are not implemented.
+- Database tables are created from ORM metadata at startup as a development
+  convenience. Existing databases are upgraded with Alembic migrations.
+- Tests cover authentication, chat, knowledge ingestion/search, and the textual
+  ReAct event loop. Local development runs Python directly while Docker Compose
+  provides PostgreSQL, MinIO, and Qdrant.

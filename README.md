@@ -4,36 +4,34 @@ backend-only multilingual medical assistant. persian, arabic, russian, english, 
 
 ## stack
 
-fastapi + async sqlalchemy 2 | postgres | minio | qdrant (dense+bm25 hybrid) | langchain react agent | dr7 chat | openrouter gemini
+fastapi + async sqlalchemy 2 | postgres | minio | qdrant (dense+bm25 hybrid) | custom react + langchain tools | dr7 chat | openrouter gemini
 
 ## quick start
 
 ```bash
 cp .env.example .env
-# fill in JWT_SECRET (>=32 chars), ADMIN_API_KEY (>=16 chars), and provider keys
-docker compose up --build
+# fill in ADMIN_API_KEY (>=16 chars) and provider keys
+docker compose up -d postgres minio qdrant
+uv sync
+uv run alembic upgrade head
+uv run uvicorn api.main:app --reload
 ```
 
 open http://localhost:8000/docs
 
 ## local dev
 
-python 3.12+, uv. infra first, then app:
-
-```bash
-docker compose up -d postgres minio qdrant
-uv sync
-uv run uvicorn api.main:app --reload
-```
-
-env vars from .env. swap between docker and local by changing POSTGRES_HOST, MINIO_HOST, QDRANT_HOST.
+python 3.12+, uv. python and tests run locally; compose provides postgres,
+minio, and qdrant. postgres uses `POSTGRES_HOST`, `POSTGRES_PORT`,
+`POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB`. local endpoints use
+`localhost`; compose overrides the app container's service hosts.
 
 ## migrations
 
 ```bash
-alembic revision --autogenerate -m "what changed"
-alembic upgrade head
-alembic downgrade -1   # rollback
+uv run alembic revision --autogenerate -m "what changed"
+uv run alembic upgrade head
+uv run alembic downgrade -1   # rollback
 ```
 
 bootstrap uses create_all; prod should always use alembic upgrade head.
@@ -41,9 +39,9 @@ bootstrap uses create_all; prod should always use alembic upgrade head.
 ## validation
 
 ```bash
-uvx ruff check api core db models schemas services
-uvx ruff format --check api core db models schemas services
-uvx ty check api core db models schemas services
+uvx ruff check src
+uvx ruff format --check src
+uvx ty check src
 ```
 
 provider calls need real credentials + infra.
