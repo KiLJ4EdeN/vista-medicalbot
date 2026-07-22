@@ -6,8 +6,6 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from langchain_core.callbacks import AsyncCallbackHandler
-from langchain_core.messages import AIMessage
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,39 +21,6 @@ from services.sessions import get_session
 class AgentStreamEvent:
     event: str
     data: dict[str, Any]
-
-
-class AgentEventHandler(AsyncCallbackHandler):
-    def __init__(self, queue: asyncio.Queue[AgentStreamEvent]) -> None:
-        self.queue = queue
-
-    async def on_llm_new_token(
-        self, token: str | list[str | dict[str, Any]], **kwargs: Any
-    ) -> None:
-        text = _content_text(token)
-        if text:
-            await self.queue.put(AgentStreamEvent("token", {"content": text}))
-
-    async def on_tool_start(
-        self, serialized: dict[str, Any], input_str: str, **kwargs: Any
-    ) -> None:
-        name = str(serialized.get("name", "tool"))
-        await self.queue.put(AgentStreamEvent("tool_started", {"name": name}))
-
-    async def on_tool_end(self, output: Any, **kwargs: Any) -> None:
-        await self.queue.put(AgentStreamEvent("tool_finished", {}))
-
-
-def _content_text(content: Any) -> str:
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        return "".join(
-            part if isinstance(part, str) else str(part.get("text", ""))
-            for part in content
-            if isinstance(part, (str, dict))
-        )
-    return ""
 
 
 async def _prepare_messages(
@@ -122,15 +87,6 @@ async def _prepare_messages(
     return user_message, assistant_message
 
 
-def _final_content(result: dict[str, Any]) -> str:
-    for message in reversed(result.get("messages", [])):
-        if isinstance(message, AIMessage) and not getattr(message, "tool_calls", None):
-            content = _content_text(message.content)
-            if content:
-                return content
-    return ""
-
-
 async def stream_query(
     db: AsyncSession,
     user: User,
@@ -141,51 +97,27 @@ async def stream_query(
     _, assistant_message = await _prepare_messages(
         db, user, session_id, content, upload_ids=upload_ids
     )
-    queue: asyncio.Queue[AgentStreamEvent] = asyncio.Queue()
-    callback = AgentEventHandler(queue)
     tools_used: list[str] = []
     streamed_content = ""
-    task: asyncio.Task[None] | None = None
 
     yield AgentStreamEvent("message_started", {"message_id": str(assistant_message.id)})
     try:
         history = await load_chat_history(db, session_id)
         agent = await create_session_agent(db, user_id=user.id, session_id=session_id)
-
-        async def invoke_agent() -> None:
-            try:
-                result = await agent.ainvoke(
-                    {"messages": history},
-                    config={
-                        "callbacks": [callback],
-                        "recursion_limit": get_settings().agent_recursion_limit,
-                    },
-                )
-                await queue.put(AgentStreamEvent("agent_done", {"result": result}))
-            except Exception as error:
-                await queue.put(AgentStreamEvent("agent_error", {"error": str(error)}))
-
-        task = asyncio.create_task(invoke_agent())
-        while True:
-            item = await queue.get()
-            if item.event == "token":
-                streamed_content += str(item.data["content"])
-                yield item
-            elif item.event == "tool_started":
-                tools_used.append(str(item.data["name"]))
-                yield item
+        async for item in agent.astream(
+            history, recursion_limit=get_settings().agent_recursion_limit
+        ):
+            if item.event == "tool_started":
+                tools_used.append(item.content)
+                yield AgentStreamEvent("tool_started", {"name": item.content})
             elif item.event == "tool_finished":
-                yield item
-            elif item.event == "agent_done":
-                final_content = _final_content(item.data["result"])
+                yield AgentStreamEvent("tool_finished", {})
+            elif item.event == "final":
+                final_content = item.content
                 if not final_content:
                     raise RuntimeError("The language model returned an empty response")
-                if not streamed_content:
-                    yield AgentStreamEvent("token", {"content": final_content})
-                elif final_content.startswith(streamed_content):
-                    remainder = final_content[len(streamed_content) :]
-                    if remainder:
-                        yield AgentStreamEvent("token", {"content": remainder})
+                streamed_content = final_content
+                yield AgentStreamEvent("token", {"content": final_content})
                 assistant_message.content = final_content
                 assistant_message.status = MessageStatus.COMPLETED
                 assistant_message.payload = {"tools_used": tools_used}
@@ -194,13 +126,7 @@ async def stream_query(
                     "message_completed", {"message_id": str(assistant_message.id)}
                 )
                 return
-            elif item.event == "agent_error":
-                raise RuntimeError(str(item.data["error"]))
     except asyncio.CancelledError:
-        if task is not None:
-            task.cancel()
-            with suppress(asyncio.CancelledError):
-                await task
         assistant_message.content = streamed_content
         assistant_message.status = MessageStatus.FAILED
         assistant_message.payload = {"tools_used": tools_used, "error": "client_disconnected"}
@@ -219,6 +145,3 @@ async def stream_query(
                 "detail": "The assistant response could not be completed.",
             },
         )
-    finally:
-        if task is not None and not task.done():
-            task.cancel()
