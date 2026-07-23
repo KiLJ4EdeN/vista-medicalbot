@@ -94,24 +94,6 @@ async def _ensure_collection(dense_size: int) -> None:
             field_schema=models.PayloadSchemaType.KEYWORD,
             wait=True,
         )
-        await client.create_payload_index(
-            collection_name=settings.qdrant_collection,
-            field_name="source",
-            field_schema=models.PayloadSchemaType.KEYWORD,
-            wait=True,
-        )
-        await client.create_payload_index(
-            collection_name=settings.qdrant_collection,
-            field_name="tags",
-            field_schema=models.PayloadSchemaType.KEYWORD,
-            wait=True,
-        )
-        await client.create_payload_index(
-            collection_name=settings.qdrant_collection,
-            field_name="publication_year",
-            field_schema=models.PayloadSchemaType.INTEGER,
-            wait=True,
-        )
     except Exception as error:
         try:
             if await client.collection_exists(settings.qdrant_collection):
