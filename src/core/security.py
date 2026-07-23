@@ -14,4 +14,4 @@ def verify_password(password: str, encoded_password: str) -> bool:
 
 
 def create_api_token() -> str:
-    return f"mwd_{token_urlsafe(32)}"
+    return f"mdwi_{token_urlsafe(32)}"

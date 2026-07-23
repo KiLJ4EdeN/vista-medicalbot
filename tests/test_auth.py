@@ -20,7 +20,7 @@ async def test_permanent_token_follows_account_status(
     assert registration.status_code == 201
     user_id = registration.json()["user"]["id"]
     token = registration.json()["token"]
-    assert token.startswith("mwd_")
+    assert token.startswith("mdwi_")
 
     login = await client.post("/auth/login", json={"email": email, "password": password})
     assert login.status_code == 200
