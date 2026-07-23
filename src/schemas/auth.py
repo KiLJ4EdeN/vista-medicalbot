@@ -32,10 +32,7 @@ class LoginRequest(BaseModel):
         return str(value).lower()
 
 
-class AuthToken(BaseModel):
+class AuthResponse(BaseModel):
+    user: UserResponse
     token: str
     token_type: str = "bearer"
-
-
-class AuthResponse(AuthToken):
-    user: UserResponse
