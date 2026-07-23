@@ -6,15 +6,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import NotFoundError
 from models import ChatMessage, Session, Upload, User
+from models.enums import ChatLanguage
 from services.storage import remove_object
 
 
 async def get_session(
-    db: AsyncSession, user_id: UUID, session_id: UUID, *, for_update: bool = False
+    db: AsyncSession,
+    user_id: UUID,
+    session_id: UUID,
+    language: ChatLanguage,
+    *,
+    for_update: bool = False,
 ) -> Session:
     query = select(Session).where(
         Session.id == session_id,
         Session.user_id == user_id,
+        Session.language == language,
     )
     if for_update:
         query = query.with_for_update()
@@ -24,8 +31,10 @@ async def get_session(
     return chat_session
 
 
-async def create_session(db: AsyncSession, user: User, *, title: str | None) -> Session:
-    chat_session = Session(user_id=user.id, title=title)
+async def create_session(
+    db: AsyncSession, user: User, language: ChatLanguage, *, title: str | None
+) -> Session:
+    chat_session = Session(user_id=user.id, language=language, title=title)
     db.add(chat_session)
     await db.commit()
     await db.refresh(chat_session)
@@ -33,9 +42,9 @@ async def create_session(db: AsyncSession, user: User, *, title: str | None) -> 
 
 
 async def list_sessions(
-    db: AsyncSession, user_id: UUID, *, offset: int, limit: int
+    db: AsyncSession, user_id: UUID, language: ChatLanguage, *, offset: int, limit: int
 ) -> tuple[list[Session], int]:
-    filters = (Session.user_id == user_id,)
+    filters = (Session.user_id == user_id, Session.language == language)
     total = await db.scalar(select(func.count()).select_from(Session).where(*filters))
     items = list(
         await db.scalars(
@@ -50,17 +59,24 @@ async def list_sessions(
 
 
 async def rename_session(
-    db: AsyncSession, user_id: UUID, session_id: UUID, *, title: str
+    db: AsyncSession,
+    user_id: UUID,
+    session_id: UUID,
+    language: ChatLanguage,
+    *,
+    title: str,
 ) -> Session:
-    chat_session = await get_session(db, user_id, session_id, for_update=True)
+    chat_session = await get_session(db, user_id, session_id, language, for_update=True)
     chat_session.title = title
     await db.commit()
     await db.refresh(chat_session)
     return chat_session
 
 
-async def delete_session(db: AsyncSession, user_id: UUID, session_id: UUID) -> None:
-    chat_session = await get_session(db, user_id, session_id, for_update=True)
+async def delete_session(
+    db: AsyncSession, user_id: UUID, session_id: UUID, language: ChatLanguage
+) -> None:
+    chat_session = await get_session(db, user_id, session_id, language, for_update=True)
     object_keys = list(
         await db.scalars(select(Upload.object_key).where(Upload.session_id == session_id))
     )
@@ -70,9 +86,15 @@ async def delete_session(db: AsyncSession, user_id: UUID, session_id: UUID) -> N
 
 
 async def load_messages(
-    db: AsyncSession, user_id: UUID, session_id: UUID, *, offset: int, limit: int
+    db: AsyncSession,
+    user_id: UUID,
+    session_id: UUID,
+    language: ChatLanguage,
+    *,
+    offset: int,
+    limit: int,
 ) -> tuple[list[ChatMessage], int]:
-    await get_session(db, user_id, session_id)
+    await get_session(db, user_id, session_id, language)
     total = await db.scalar(
         select(func.count()).select_from(ChatMessage).where(ChatMessage.session_id == session_id)
     )

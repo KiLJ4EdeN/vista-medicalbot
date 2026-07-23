@@ -7,6 +7,7 @@ from core.exceptions import ExternalServiceError
 from db.session import async_session_factory
 from models import Session, Upload
 from services.storage import get_object_bytes
+from tests.conftest import CHAT_LANGUAGE
 
 pytestmark = pytest.mark.integration
 
@@ -17,7 +18,10 @@ async def test_session_deletion_removes_rows_and_file(
     user_token: str,
     session_id: str,
 ) -> None:
-    headers = {"Authorization": f"Bearer {user_token}"}
+    headers = {
+        "Authorization": f"Bearer {user_token}",
+        "X-Language": CHAT_LANGUAGE,
+    }
     uploaded = await client.post(
         f"/uploads/sessions/{session_id}",
         files={"file": ("scan.jpg", b"\xff\xd8\xff" + b"\0" * 64, "image/jpeg")},

@@ -58,6 +58,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_last_activity_at'), 'users', ['last_activity_at'], unique=False)
     op.create_table('sessions',
     sa.Column('user_id', sa.Uuid(), nullable=False),
+    sa.Column('language', sa.Enum('arabic', 'persian', 'russian', 'turkish', name='chatlanguage', native_enum=False), nullable=False),
     sa.Column('title', sa.String(length=200), nullable=True),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -65,7 +66,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_sessions_user_id_users'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_sessions'))
     )
-    op.create_index(op.f('ix_sessions_user_id'), 'sessions', ['user_id'], unique=False)
+    op.create_index('ix_sessions_user_language', 'sessions', ['user_id', 'language'], unique=False)
     op.create_table('chat_messages',
     sa.Column('session_id', sa.Uuid(), nullable=False),
     sa.Column('role', sa.Enum('user', 'assistant', name='messagerole', native_enum=False), nullable=False),
@@ -106,7 +107,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_uploads_session_id'), table_name='uploads')
     op.drop_table('uploads')
     op.drop_table('chat_messages')
-    op.drop_index(op.f('ix_sessions_user_id'), table_name='sessions')
+    op.drop_index('ix_sessions_user_language', table_name='sessions')
     op.drop_table('sessions')
     op.drop_index(op.f('ix_users_last_activity_at'), table_name='users')
     op.drop_index(op.f('ix_users_is_active'), table_name='users')

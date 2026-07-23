@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from models.enums import ChatLanguage
+
 
 class CreateSessionRequest(BaseModel):
     title: str | None = Field(default=None, max_length=200)
@@ -32,6 +34,7 @@ class SessionInfo(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    language: ChatLanguage
     title: str | None
     created_at: datetime
     updated_at: datetime

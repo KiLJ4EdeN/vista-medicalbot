@@ -3,6 +3,13 @@ from enum import StrEnum
 from sqlalchemy import Enum
 
 
+class ChatLanguage(StrEnum):
+    ARABIC = "arabic"
+    PERSIAN = "persian"
+    RUSSIAN = "russian"
+    TURKISH = "turkish"
+
+
 class MessageRole(StrEnum):
     USER = "user"
     ASSISTANT = "assistant"

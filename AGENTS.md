@@ -25,6 +25,8 @@ so the model can recover without escaping the tool loop.
 
 - Use async SQLAlchemy sessions.
 - Users own chat sessions; uploads derive ownership through their session.
+- Sessions are partitioned by a required `X-Language` mode: `arabic`,
+  `persian`, `russian`, or bilingual English/Turkish `turkish`.
 - Deleting sessions, uploads, or knowledge entries removes their database rows
   and associated MinIO/Qdrant data.
 - Only user and assistant message records persist; tool turns remain transient.
@@ -42,6 +44,8 @@ so the model can recover without escaping the tool loop.
 - OpenRouter endpoints are configured as full request URLs.
 - The dr7 chat endpoint is called directly because it does not support native
   tool calls; the application owns the textual ReAct loop.
+- Persona language constrains final assistant responses, never the language of
+  accepted images, PDFs, examination cards, guideline evidence, or tool output.
 - Never log provider keys, admin keys, or user bearer tokens.
 
 ## Validation

@@ -19,6 +19,9 @@ uv run uvicorn api.main:app --reload
 
 open http://localhost:8000/docs
 
+Session, chat, and upload routes require `X-Language`: `arabic`, `persian`,
+`russian`, or `turkish` (the bilingual English/Turkish DR ONLINE mode).
+
 ## local dev
 
 python 3.12+, uv. python and tests run locally; compose provides postgres,

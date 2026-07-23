@@ -10,15 +10,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import get_settings
 from core.exceptions import ExternalServiceError, NotFoundError
 from models import Session, Upload
+from models.enums import ChatLanguage
 from services.documents import validate_document_upload
 from services.sessions import get_session
 from services.storage import presigned_download_url, put_object, remove_object
 
 
 async def create_upload(
-    db: AsyncSession, user_id: UUID, session_id: UUID, file: UploadFile
+    db: AsyncSession,
+    user_id: UUID,
+    session_id: UUID,
+    language: ChatLanguage,
+    file: UploadFile,
 ) -> Upload:
-    chat_session = await get_session(db, user_id, session_id)
+    chat_session = await get_session(db, user_id, session_id, language)
     document = await validate_document_upload(file)
     object_key = f"sessions/{chat_session.user_id}/{session_id}/{uuid4()}{document.suffix}"
 
@@ -48,13 +53,16 @@ async def create_upload(
     return upload
 
 
-async def get_owned_upload(db: AsyncSession, user_id: UUID, upload_id: UUID) -> Upload:
+async def get_owned_upload(
+    db: AsyncSession, user_id: UUID, upload_id: UUID, language: ChatLanguage
+) -> Upload:
     upload = await db.scalar(
         select(Upload)
         .join(Session, Session.id == Upload.session_id)
         .where(
             Upload.id == upload_id,
             Session.user_id == user_id,
+            Session.language == language,
         )
     )
     if upload is None:
@@ -62,8 +70,10 @@ async def get_owned_upload(db: AsyncSession, user_id: UUID, upload_id: UUID) -> 
     return upload
 
 
-async def list_session_uploads(db: AsyncSession, user_id: UUID, session_id: UUID) -> list[Upload]:
-    await get_session(db, user_id, session_id)
+async def list_session_uploads(
+    db: AsyncSession, user_id: UUID, session_id: UUID, language: ChatLanguage
+) -> list[Upload]:
+    await get_session(db, user_id, session_id, language)
     return list(
         await db.scalars(
             select(Upload)
@@ -73,17 +83,19 @@ async def list_session_uploads(db: AsyncSession, user_id: UUID, session_id: UUID
     )
 
 
-async def delete_upload(db: AsyncSession, user_id: UUID, upload_id: UUID) -> None:
-    upload = await get_owned_upload(db, user_id, upload_id)
+async def delete_upload(
+    db: AsyncSession, user_id: UUID, upload_id: UUID, language: ChatLanguage
+) -> None:
+    upload = await get_owned_upload(db, user_id, upload_id, language)
     await remove_object(upload.object_key)
     await db.delete(upload)
     await db.commit()
 
 
 async def create_upload_download(
-    db: AsyncSession, user_id: UUID, upload_id: UUID
+    db: AsyncSession, user_id: UUID, upload_id: UUID, language: ChatLanguage
 ) -> tuple[str, datetime]:
-    upload = await get_owned_upload(db, user_id, upload_id)
+    upload = await get_owned_upload(db, user_id, upload_id, language)
     settings = get_settings()
     expires = timedelta(minutes=settings.download_url_expire_minutes)
     url = await presigned_download_url(upload.object_key, expires=expires)

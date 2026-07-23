@@ -14,6 +14,7 @@ _settings = get_settings()
 ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "test-admin-key-16+")
 LLM_API_KEY = _settings.llm_api_key.get_secret_value()
 MULTIMODAL_API_KEY = _settings.multimodal_api_key.get_secret_value()
+CHAT_LANGUAGE = "arabic"
 
 os.environ.setdefault("ADMIN_API_KEY", ADMIN_API_KEY)
 
@@ -67,7 +68,10 @@ async def user_token(client: httpx.AsyncClient) -> str:
 
 @pytest_asyncio.fixture(scope="function")
 async def user_id(client: httpx.AsyncClient, user_token: str) -> str:
-    headers = {"Authorization": f"Bearer {user_token}"}
+    headers = {
+        "Authorization": f"Bearer {user_token}",
+        "X-Language": CHAT_LANGUAGE,
+    }
     r = await client.get("/sessions", headers=headers)
     assert r.status_code == 200
     data = r.json()
@@ -76,7 +80,10 @@ async def user_id(client: httpx.AsyncClient, user_token: str) -> str:
 
 @pytest_asyncio.fixture(scope="function")
 async def session_id(client: httpx.AsyncClient, user_token: str) -> str:
-    headers = {"Authorization": f"Bearer {user_token}"}
+    headers = {
+        "Authorization": f"Bearer {user_token}",
+        "X-Language": CHAT_LANGUAGE,
+    }
     r = await client.post("/sessions", json={"title": "test session"}, headers=headers)
     assert r.status_code == 201, f"Session creation failed: {r.text}"
     return r.json()["id"]

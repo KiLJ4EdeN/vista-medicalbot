@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import get_settings
 from core.skills import load_prompt, skill_catalog
 from models import ChatMessage
-from models.enums import MessageRole
+from models.enums import ChatLanguage, MessageRole
 from services.tools import load_skill, make_file_tool, search_medical_guidelines
 from services.uploads import list_session_uploads
 
@@ -36,16 +36,20 @@ async def complete_chat(messages: list[dict[str, str]]) -> str:
     return content
 
 
-def build_agent_tools(db: AsyncSession, *, user_id: UUID, session_id: UUID) -> list[BaseTool]:
+def build_agent_tools(
+    db: AsyncSession, *, user_id: UUID, session_id: UUID, language: ChatLanguage
+) -> list[BaseTool]:
     return [
         load_skill,
         search_medical_guidelines,
-        make_file_tool(db, user_id=user_id, session_id=session_id),
+        make_file_tool(db, user_id=user_id, session_id=session_id, language=language),
     ]
 
 
-async def build_system_prompt(db: AsyncSession, *, user_id: UUID, session_id: UUID) -> str:
-    uploads = await list_session_uploads(db, user_id, session_id)
+async def build_system_prompt(
+    db: AsyncSession, *, user_id: UUID, session_id: UUID, language: ChatLanguage
+) -> str:
+    uploads = await list_session_uploads(db, user_id, session_id, language)
     if uploads:
         files = "\n".join(
             f"- {upload.id}: {upload.original_filename} ({upload.content_type})"
@@ -55,6 +59,7 @@ async def build_system_prompt(db: AsyncSession, *, user_id: UUID, session_id: UU
         files = "- No files are attached to this session."
     return "\n\n".join(
         [
+            load_prompt(f"persona_{language.value}"),
             load_prompt("medical_assistant"),
             "## Available Skills\n" + skill_catalog(),
             "## Current Session Files\n" + files,
@@ -164,8 +169,12 @@ class ReActAgent:
         return None
 
 
-async def create_session_agent(db: AsyncSession, *, user_id: UUID, session_id: UUID) -> ReActAgent:
+async def create_session_agent(
+    db: AsyncSession, *, user_id: UUID, session_id: UUID, language: ChatLanguage
+) -> ReActAgent:
     return ReActAgent(
-        tools=build_agent_tools(db, user_id=user_id, session_id=session_id),
-        system_prompt=await build_system_prompt(db, user_id=user_id, session_id=session_id),
+        tools=build_agent_tools(db, user_id=user_id, session_id=session_id, language=language),
+        system_prompt=await build_system_prompt(
+            db, user_id=user_id, session_id=session_id, language=language
+        ),
     )

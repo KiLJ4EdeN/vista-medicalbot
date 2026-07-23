@@ -5,7 +5,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from tests.conftest import KNOWLEDGE_PDF, skip_if_no_llm
+from tests.conftest import CHAT_LANGUAGE, KNOWLEDGE_PDF, skip_if_no_llm
 
 OUTPUT = Path(__file__).parent / "output"
 OUTPUT.mkdir(exist_ok=True)
@@ -34,7 +34,10 @@ async def test_chat_flow(
     user_token: str,
     session_id: str,
 ) -> None:
-    headers = {"Authorization": f"Bearer {user_token}"}
+    headers = {
+        "Authorization": f"Bearer {user_token}",
+        "X-Language": CHAT_LANGUAGE,
+    }
 
     r = await client.post(
         f"/sessions/{session_id}/messages",
@@ -56,6 +59,7 @@ async def test_chat_flow(
     assistant_msgs = [m for m in msgs if m["role"] == "assistant"]
     assert len(assistant_msgs) >= 1
     assert len(assistant_msgs[-1]["content"]) > 0
+    assert any("\u0600" <= char <= "\u06ff" for char in assistant_msgs[-1]["content"])
 
     deleted = await client.delete(f"/sessions/{session_id}", headers=headers)
     assert deleted.status_code == 204
@@ -93,7 +97,10 @@ async def test_chat_with_knowledge_search(
     else:
         pytest.fail("Processing did not complete within 60 seconds")
 
-    headers = {"Authorization": f"Bearer {user_token}"}
+    headers = {
+        "Authorization": f"Bearer {user_token}",
+        "X-Language": CHAT_LANGUAGE,
+    }
     r3 = await client.post(
         f"/sessions/{session_id}/messages",
         json={"content": "What are the NCCN recommendations for breast cancer screening?"},

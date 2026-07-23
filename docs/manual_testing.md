@@ -10,6 +10,11 @@ Open `http://localhost:8000/docs` in your browser.
 2. **POST /auth/login** - fill `email`, `password`; it returns the same permanent token
 3. Click **Authorize** (top right), paste `token`, and authenticate user endpoints
 
+For every session, chat, and upload request, set `X-Language` to `arabic`,
+`persian`, `russian`, or `turkish`. Sessions created under one value are hidden
+from the other values. The `turkish` mode answers in English or Turkish based on
+the latest message.
+
 ---
 
 ## Standard User Flow (authenticated)

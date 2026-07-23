@@ -78,6 +78,7 @@ where doing so reduces complexity.
 - Registration and login that return the user's permanent bearer token
 - Profile and password management without token rotation
 - Chat sessions: create, list, history, and permanent deletion
+- Session histories partitioned by required `X-Language` mode
 - SSE-delivered lifecycle, tool, and final-answer events, with completed or
   failed assistant records persisted
 - Agent-selected tools for shared RAG, VLM image analysis, and PDF/image OCR
@@ -112,6 +113,23 @@ require an external job queue.
 - `/sessions/*`: session CRUD, history, and SSE agent chat
 - `/uploads/*`: session-scoped file upload, listing, and deletion
 - `/stt`: audio-to-text processing
+
+Session, chat, and upload routes require `X-Language` with one of four values:
+
+- `arabic`: MUDAWI, final responses strictly in Arabic
+- `persian`: canci, final responses strictly in Persian
+- `russian`: DR ONLINE, final responses strictly in Russian
+- `turkish`: DR ONLINE, final responses in Turkish or English according to the
+  latest user message
+
+The selected mode is stored on the session and cannot change. List and access
+queries include both user ownership and language, so branded frontends expose
+only their own session history. A mismatched mode returns not found.
+
+Language constraints apply to final assistant responses, not input evidence.
+Images, PDFs, examination cards, guideline text, and tool results may use any
+language. OCR preserves original text and exact clinical values; the assistant
+translates or explains the evidence in the active persona language.
 - `/knowledge/*`: admin knowledge CRUD and search testing
 - `/admin/users/*`: user monitoring and activation/deactivation
 - `/admin/stats/*`: usage and activity analytics

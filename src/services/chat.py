@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import get_settings
 from core.exceptions import ConflictError
 from models import ChatMessage, Upload, User
-from models.enums import MessageRole, MessageStatus
+from models.enums import ChatLanguage, MessageRole, MessageStatus
 from services.agent import create_session_agent, load_chat_history
 from services.sessions import get_session
 
@@ -27,10 +27,11 @@ async def _prepare_messages(
     db: AsyncSession,
     user: User,
     session_id: UUID,
+    language: ChatLanguage,
     content: str,
     upload_ids: list[UUID] | None = None,
 ) -> tuple[ChatMessage, ChatMessage]:
-    chat_session = await get_session(db, user.id, session_id, for_update=True)
+    chat_session = await get_session(db, user.id, session_id, language, for_update=True)
     active_generation = await db.scalar(
         select(ChatMessage.id).where(
             ChatMessage.session_id == session_id,
@@ -90,11 +91,12 @@ async def stream_query(
     db: AsyncSession,
     user: User,
     session_id: UUID,
+    language: ChatLanguage,
     content: str,
     upload_ids: list[UUID] | None = None,
 ) -> AsyncIterator[AgentStreamEvent]:
     _, assistant_message = await _prepare_messages(
-        db, user, session_id, content, upload_ids=upload_ids
+        db, user, session_id, language, content, upload_ids=upload_ids
     )
     tools_used: list[str] = []
     streamed_content = ""
@@ -102,7 +104,9 @@ async def stream_query(
     yield AgentStreamEvent("message_started", {"message_id": str(assistant_message.id)})
     try:
         history = await load_chat_history(db, session_id)
-        agent = await create_session_agent(db, user_id=user.id, session_id=session_id)
+        agent = await create_session_agent(
+            db, user_id=user.id, session_id=session_id, language=language
+        )
         async for item in agent.astream(
             history, recursion_limit=get_settings().agent_recursion_limit
         ):

@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from hmac import compare_digest
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Security, status
+from fastapi import Depends, Header, HTTPException, Security, status
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,11 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import get_settings
 from db.session import get_db
 from models import User
+from models.enums import ChatLanguage
 
 bearer_scheme = HTTPBearer(auto_error=False)
 admin_api_key_header = APIKeyHeader(name="x-api-key", auto_error=False)
 
 DatabaseSession = Annotated[AsyncSession, Depends(get_db)]
+ChatLanguageHeader = Annotated[ChatLanguage, Header(alias="X-Language")]
 
 
 async def get_current_user(
