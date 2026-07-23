@@ -26,7 +26,7 @@ async def complete_chat(messages: list[dict[str, str]]) -> str:
                 "Authorization": f"Bearer {settings.llm_api_key.get_secret_value()}",
                 "Content-Type": "application/json",
             },
-            json={"model": settings.llm_model, "messages": messages, "temperature": 0.2},
+            json={"model": settings.llm_model, "messages": messages, "temperature": 0},
             timeout=120,
         )
         response.raise_for_status()
