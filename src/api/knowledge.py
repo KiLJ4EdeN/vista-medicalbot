@@ -14,12 +14,11 @@ from schemas.knowledge import (
 )
 from schemas.upload import UploadDownloadResponse
 from services.knowledge import (
-    cleanup_knowledge_entry,
     create_knowledge_download,
     create_knowledge_entry,
+    delete_knowledge_entry,
     get_knowledge_entry,
     list_knowledge_entries,
-    mark_knowledge_deleted,
     mark_knowledge_pending,
     process_knowledge_entry,
     update_knowledge_entry,
@@ -87,7 +86,7 @@ async def patch_knowledge(
     db: DatabaseSession,
     _admin: AdminAccess,
 ) -> KnowledgeResponse:
-    entry = await update_knowledge_entry(db, entry_id, payload.model_dump(exclude_unset=True))
+    entry = await update_knowledge_entry(db, entry_id, payload.title)
     background_tasks.add_task(process_knowledge_entry, entry.id)
     return KnowledgeResponse.model_validate(entry)
 
@@ -115,10 +114,8 @@ async def download_knowledge(
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_knowledge(
     entry_id: UUID,
-    background_tasks: BackgroundTasks,
     db: DatabaseSession,
     _admin: AdminAccess,
 ) -> Response:
-    entry = await mark_knowledge_deleted(db, entry_id)
-    background_tasks.add_task(cleanup_knowledge_entry, entry.id, entry.object_key)
+    await delete_knowledge_entry(db, entry_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

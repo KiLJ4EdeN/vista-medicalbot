@@ -63,3 +63,5 @@ async def test_knowledge_upload_and_search(
 
     r5 = await client.delete(f"/knowledge/{entry_id}", headers=admin_headers)
     assert r5.status_code == 204
+    missing = await client.get(f"/knowledge/{entry_id}", headers=admin_headers)
+    assert missing.status_code == 404

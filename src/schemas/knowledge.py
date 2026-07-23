@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from models.enums import ProcessingStatus
 
@@ -31,13 +31,7 @@ class KnowledgeListResponse(BaseModel):
 
 
 class KnowledgeUpdateRequest(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=300)
-
-    @model_validator(mode="after")
-    def require_change(self) -> "KnowledgeUpdateRequest":
-        if not self.model_fields_set:
-            raise ValueError("At least one knowledge field is required")
-        return self
+    title: str = Field(min_length=1, max_length=300)
 
 
 class KnowledgeSearchRequest(BaseModel):

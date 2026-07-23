@@ -27,7 +27,7 @@ Open `http://localhost:8000/docs` in your browser.
 14. **POST /sessions/{session_id}/messages** - send `content` and optional session-scoped `upload_ids`; receive SSE lifecycle, tool, and final-answer events
 15. **GET /sessions/{session_id}/messages** - view ordered history with attachment metadata and presigned URLs for referenced uploads
 16. **POST /stt** - upload audio for transcription
-17. **DELETE /sessions/{session_id}** - soft-delete session
+17. **DELETE /sessions/{session_id}** - permanently delete the session, messages, and uploaded files
 
 ---
 
@@ -45,4 +45,4 @@ Set `x-api-key` header in Swagger UI for these endpoints (click Authorize → en
 25. **POST /knowledge/search/test** - test hybrid search
 26. **POST /knowledge/{entry_id}/download** - get a presigned download URL
 27. **POST /knowledge/{entry_id}/reindex** - reprocess from scratch
-28. **DELETE /knowledge/{entry_id}** - soft-delete
+28. **DELETE /knowledge/{entry_id}** - permanently delete the entry, source file, and vectors

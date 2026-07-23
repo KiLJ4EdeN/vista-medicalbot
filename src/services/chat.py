@@ -54,7 +54,6 @@ async def _prepare_messages(
                 select(Upload).where(
                     Upload.id == uid,
                     Upload.session_id == session_id,
-                    Upload.deleted_at.is_(None),
                 )
             )
             if upload is not None:

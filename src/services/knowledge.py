@@ -66,11 +66,7 @@ async def create_knowledge_entry(
 
 
 async def get_knowledge_entry(db: AsyncSession, entry_id: UUID) -> KnowledgeEntry:
-    entry = await db.scalar(
-        select(KnowledgeEntry).where(
-            KnowledgeEntry.id == entry_id, KnowledgeEntry.deleted_at.is_(None)
-        )
-    )
+    entry = await db.get(KnowledgeEntry, entry_id)
     if entry is None:
         raise NotFoundError("Knowledge entry not found")
     return entry
@@ -79,12 +75,10 @@ async def get_knowledge_entry(db: AsyncSession, entry_id: UUID) -> KnowledgeEntr
 async def list_knowledge_entries(
     db: AsyncSession, *, offset: int, limit: int
 ) -> tuple[list[KnowledgeEntry], int]:
-    active = KnowledgeEntry.deleted_at.is_(None)
-    total = await db.scalar(select(func.count()).select_from(KnowledgeEntry).where(active))
+    total = await db.scalar(select(func.count()).select_from(KnowledgeEntry))
     entries = list(
         await db.scalars(
             select(KnowledgeEntry)
-            .where(active)
             .order_by(KnowledgeEntry.created_at.desc(), KnowledgeEntry.id.desc())
             .offset(offset)
             .limit(limit)
@@ -93,16 +87,12 @@ async def list_knowledge_entries(
     return entries, total or 0
 
 
-async def update_knowledge_entry(
-    db: AsyncSession, entry_id: UUID, changes: dict[str, object]
-) -> KnowledgeEntry:
+async def update_knowledge_entry(db: AsyncSession, entry_id: UUID, title: str) -> KnowledgeEntry:
     entry = await get_knowledge_entry(db, entry_id)
-    for field, value in changes.items():
-        if field == "title" and isinstance(value, str):
-            value = value.strip()
-            if not value:
-                raise InvalidInputError("Knowledge title cannot be blank")
-        setattr(entry, field, value)
+    normalized_title = title.strip()
+    if not normalized_title:
+        raise InvalidInputError("Knowledge title cannot be blank")
+    entry.title = normalized_title
     entry.status = ProcessingStatus.PENDING
     entry.processing_error = None
     await db.commit()
@@ -119,12 +109,16 @@ async def mark_knowledge_pending(db: AsyncSession, entry_id: UUID) -> KnowledgeE
     return entry
 
 
-async def mark_knowledge_deleted(db: AsyncSession, entry_id: UUID) -> KnowledgeEntry:
-    entry = await get_knowledge_entry(db, entry_id)
-    entry.deleted_at = datetime.now(UTC)
+async def delete_knowledge_entry(db: AsyncSession, entry_id: UUID) -> None:
+    entry = await db.scalar(
+        select(KnowledgeEntry).where(KnowledgeEntry.id == entry_id).with_for_update()
+    )
+    if entry is None:
+        raise NotFoundError("Knowledge entry not found")
+    await delete_knowledge_vectors(entry_id)
+    await remove_object(entry.object_key)
+    await db.delete(entry)
     await db.commit()
-    await db.refresh(entry)
-    return entry
 
 
 def _extract_pdf_text(data: bytes) -> str:
@@ -154,15 +148,12 @@ def _split_text(text: str) -> list[str]:
 async def process_knowledge_entry(entry_id: UUID) -> None:
     async with async_session_factory() as db:
         entry = await db.scalar(
-            select(KnowledgeEntry).where(
-                KnowledgeEntry.id == entry_id, KnowledgeEntry.deleted_at.is_(None)
-            )
+            select(KnowledgeEntry).where(KnowledgeEntry.id == entry_id).with_for_update()
         )
         if entry is None:
             return
-        entry.status = ProcessingStatus.PROCESSING
         entry.processing_error = None
-        await db.commit()
+        await db.flush()
 
         try:
             data = await get_object_bytes(entry.object_key)
@@ -182,10 +173,6 @@ async def process_knowledge_entry(entry_id: UUID) -> None:
                     for index, content in enumerate(chunks)
                 ]
             )
-            await db.refresh(entry)
-            if entry.deleted_at is not None:
-                await delete_knowledge_vectors(entry.id)
-                return
             entry.status = ProcessingStatus.READY
             entry.chunk_count = len(chunks)
             entry.indexed_at = datetime.now(UTC)
@@ -193,15 +180,10 @@ async def process_knowledge_entry(entry_id: UUID) -> None:
         except Exception as error:
             await db.rollback()
             current = await db.get(KnowledgeEntry, entry_id)
-            if current is not None and current.deleted_at is None:
+            if current is not None:
                 current.status = ProcessingStatus.FAILED
                 current.processing_error = str(error)[:2000]
                 await db.commit()
-
-
-async def cleanup_knowledge_entry(entry_id: UUID, object_key: str) -> None:
-    await delete_knowledge_vectors(entry_id)
-    await remove_object(object_key)
 
 
 async def create_knowledge_download(db: AsyncSession, entry_id: UUID) -> tuple[str, datetime]:

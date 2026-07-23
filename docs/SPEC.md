@@ -77,7 +77,7 @@ where doing so reduces complexity.
 
 - Registration and login that return the user's permanent bearer token
 - Profile and password management without token rotation
-- Chat sessions: create, list, history, and soft-delete
+- Chat sessions: create, list, history, and permanent deletion
 - SSE-delivered lifecycle, tool, and final-answer events, with completed or
   failed assistant records persisted
 - Agent-selected tools for shared RAG, VLM image analysis, and PDF/image OCR
@@ -190,8 +190,12 @@ fixed bypass token and no runtime settings table.
 - Admin account deactivation immediately blocks the user's bearer token;
   reactivation restores access with the same token. Password changes do not
   change the token. There is no user logout or token refresh endpoint.
-- Chat sessions and user uploads use soft deletion. Knowledge deletion removes
-  corresponding vectors and its MinIO object as background work.
+- Session deletion removes its MinIO uploads before permanently deleting the
+  session; PostgreSQL cascades to messages and upload records. Individual upload
+  deletion removes both the MinIO object and database row.
+- Knowledge deletion removes corresponding vectors and its MinIO object before
+  permanently deleting the database row. Ingestion holds a row lock so deletion
+  cannot race with vector indexing.
 - Only user and assistant message records are persisted; tool execution remains
   transient. User payloads retain validated session-upload attachment IDs so
   history can return attachment metadata and download URLs. Assistant records

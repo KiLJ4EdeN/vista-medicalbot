@@ -57,6 +57,11 @@ async def test_chat_flow(
     assert len(assistant_msgs) >= 1
     assert len(assistant_msgs[-1]["content"]) > 0
 
+    deleted = await client.delete(f"/sessions/{session_id}", headers=headers)
+    assert deleted.status_code == 204
+    missing = await client.get(f"/sessions/{session_id}", headers=headers)
+    assert missing.status_code == 404
+
 
 @pytest.mark.asyncio
 async def test_chat_with_knowledge_search(
@@ -100,3 +105,5 @@ async def test_chat_with_knowledge_search(
 
     r4 = await client.delete(f"/knowledge/{entry_id}", headers=admin_headers)
     assert r4.status_code == 204
+    missing = await client.get(f"/knowledge/{entry_id}", headers=admin_headers)
+    assert missing.status_code == 404

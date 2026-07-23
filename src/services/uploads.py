@@ -54,9 +54,7 @@ async def get_owned_upload(db: AsyncSession, user_id: UUID, upload_id: UUID) -> 
         .join(Session, Session.id == Upload.session_id)
         .where(
             Upload.id == upload_id,
-            Upload.deleted_at.is_(None),
             Session.user_id == user_id,
-            Session.deleted_at.is_(None),
         )
     )
     if upload is None:
@@ -69,7 +67,7 @@ async def list_session_uploads(db: AsyncSession, user_id: UUID, session_id: UUID
     return list(
         await db.scalars(
             select(Upload)
-            .where(Upload.session_id == session_id, Upload.deleted_at.is_(None))
+            .where(Upload.session_id == session_id)
             .order_by(Upload.created_at.asc(), Upload.id.asc())
         )
     )
@@ -78,7 +76,7 @@ async def list_session_uploads(db: AsyncSession, user_id: UUID, session_id: UUID
 async def delete_upload(db: AsyncSession, user_id: UUID, upload_id: UUID) -> None:
     upload = await get_owned_upload(db, user_id, upload_id)
     await remove_object(upload.object_key)
-    upload.deleted_at = datetime.now(UTC)
+    await db.delete(upload)
     await db.commit()
 
 

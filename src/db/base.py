@@ -1,7 +1,6 @@
 from uuid import uuid4
 
 from sqlalchemy import Column, DateTime, MetaData, Uuid, func
-from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase
 
 NAMING_CONVENTION = {
@@ -13,7 +12,7 @@ NAMING_CONVENTION = {
 }
 
 
-class Base(AsyncAttrs, DeclarativeBase):
+class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
@@ -26,7 +25,3 @@ class TimestampMixin:
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
-
-
-class SoftDeleteMixin:
-    deleted_at = Column(DateTime(timezone=True), default=None)

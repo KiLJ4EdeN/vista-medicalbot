@@ -96,12 +96,8 @@ async def dashboard_stats(db: AsyncSession) -> DashboardStats:
             User.last_activity_at.is_not(None),
             User.last_activity_at >= online_since,
         ),
-        sessions_total=await count(Session, Session.deleted_at.is_(None)),
-        sessions_today=await count(
-            Session,
-            Session.deleted_at.is_(None),
-            Session.created_at >= today,
-        ),
+        sessions_total=await count(Session),
+        sessions_today=await count(Session, Session.created_at >= today),
         chats_total=await count(ChatMessage, ChatMessage.role == MessageRole.USER),
         chats_today=await count(
             ChatMessage,

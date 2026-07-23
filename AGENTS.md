@@ -25,7 +25,8 @@ so the model can recover without escaping the tool loop.
 
 - Use async SQLAlchemy sessions.
 - Users own chat sessions; uploads derive ownership through their session.
-- Sessions and uploads soft-delete.
+- Deleting sessions, uploads, or knowledge entries removes their database rows
+  and associated MinIO/Qdrant data.
 - Only user and assistant message records persist; tool turns remain transient.
 - User message payloads retain validated session-upload attachment IDs.
 - Assistant records may be pending, completed, or failed and carry compact diagnostics.

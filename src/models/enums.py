@@ -16,7 +16,6 @@ class MessageStatus(StrEnum):
 
 class ProcessingStatus(StrEnum):
     PENDING = "pending"
-    PROCESSING = "processing"
     READY = "ready"
     FAILED = "failed"
 

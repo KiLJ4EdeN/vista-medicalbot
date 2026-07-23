@@ -1,11 +1,12 @@
-from datetime import UTC, datetime
+import asyncio
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import NotFoundError
 from models import ChatMessage, Session, Upload, User
+from services.storage import remove_object
 
 
 async def get_session(
@@ -14,7 +15,6 @@ async def get_session(
     query = select(Session).where(
         Session.id == session_id,
         Session.user_id == user_id,
-        Session.deleted_at.is_(None),
     )
     if for_update:
         query = query.with_for_update()
@@ -35,7 +35,7 @@ async def create_session(db: AsyncSession, user: User, *, title: str | None) -> 
 async def list_sessions(
     db: AsyncSession, user_id: UUID, *, offset: int, limit: int
 ) -> tuple[list[Session], int]:
-    filters = (Session.user_id == user_id, Session.deleted_at.is_(None))
+    filters = (Session.user_id == user_id,)
     total = await db.scalar(select(func.count()).select_from(Session).where(*filters))
     items = list(
         await db.scalars(
@@ -61,13 +61,11 @@ async def rename_session(
 
 async def delete_session(db: AsyncSession, user_id: UUID, session_id: UUID) -> None:
     chat_session = await get_session(db, user_id, session_id, for_update=True)
-    deleted_at = datetime.now(UTC)
-    chat_session.deleted_at = deleted_at
-    await db.execute(
-        update(Upload)
-        .where(Upload.session_id == session_id, Upload.deleted_at.is_(None))
-        .values(deleted_at=deleted_at)
+    object_keys = list(
+        await db.scalars(select(Upload.object_key).where(Upload.session_id == session_id))
     )
+    await asyncio.gather(*(remove_object(object_key) for object_key in object_keys))
+    await db.delete(chat_session)
     await db.commit()
 
 
